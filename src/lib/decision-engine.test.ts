@@ -20,6 +20,7 @@ function makeEmailEvent(
   return {
     id: "evt_1",
     googleAccountId: "ga_1",
+    date: new Date("2026-02-11T00:00:00.000Z"),
     from_: "Sender <sender@example.com>",
     senderDomain: "example.com",
     classificationCategoryId: null,
@@ -105,16 +106,18 @@ test("Protected category blocks archive", () => {
   assert.ok(res.reason.overrides.some((o) => o.overriddenSource === "protectedCategory"));
 });
 
-test("archiveAt calculation correct (48h)", () => {
+test("archiveAt calculation correct (48h after arrival)", () => {
   const categoriesById = {
     cat: { id: "cat", name: "Low-priority", protectedFromAutoArchive: false },
   };
-  const now = new Date("2026-02-11T00:00:00.000Z");
 
   const res = decideEmail(
-    makeEmailEvent({ from_: "Sender <sender@example.com>", senderDomain: "example.com" }),
+    makeEmailEvent({
+      from_: "Sender <sender@example.com>",
+      senderDomain: "example.com",
+      date: new Date("2026-02-10T00:00:00.000Z"),
+    }),
     makeCtx({
-      now,
       categoriesById,
       orgRules: [{ domain: "example.com", categoryId: "cat" }],
       categoryPoliciesById: { cat: { action: "archive_after_48h" } },
@@ -122,7 +125,7 @@ test("archiveAt calculation correct (48h)", () => {
   );
 
   assert.equal(res.action, "ARCHIVE_AT");
-  assert.equal(res.archiveAt, "2026-02-13T00:00:00.000Z");
+  assert.equal(res.archiveAt, "2026-02-12T00:00:00.000Z");
 });
 
 test("Default fallback works (Other)", () => {
@@ -150,4 +153,6 @@ test("Default fallback works (Other)", () => {
   assert.equal(res.finalCategoryId, "cat_other");
   assert.equal(res.action, "NONE");
 });
+
+
 

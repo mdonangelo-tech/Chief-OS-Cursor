@@ -32,6 +32,9 @@ export async function runAutoArchive(
   userId: string,
   dryRun = false
 ): Promise<AutoArchiveResult> {
+  // #region agent log
+  // #endregion
+
   const pref = await prisma.userDeclutterPref.findUnique({
     where: { userId },
   });
@@ -61,6 +64,10 @@ export async function runAutoArchive(
   const eligibleCategoryIds = archiveCategoryIds.size > 0
     ? [...archiveCategoryIds].filter((id) => !protectedIds.has(id))
     : [];
+
+  // #region agent log
+  // #endregion
+
   if (eligibleCategoryIds.length === 0) {
     return { eligible: 0, archived: 0, skipped: 0, errors: [], items: [] };
   }
@@ -146,6 +153,7 @@ export async function runAutoArchive(
   };
 
   const runId = randomUUID();
+  let loggedTokenRefreshError = false;
   for (const e of eligible) {
     try {
       const action = categoryActions.get(e.classificationCategoryId!) ?? "archive_after_48h";
@@ -175,6 +183,12 @@ export async function runAutoArchive(
       result.archived++;
     } catch (err) {
       result.errors.push(`${e.messageId}: ${(err as Error).message}`);
+      const msg = (err as Error)?.message ?? String(err);
+      if (!loggedTokenRefreshError && msg.toLowerCase().includes("token refresh failed")) {
+        loggedTokenRefreshError = true;
+        // #region agent log
+        // #endregion
+      }
     }
   }
 

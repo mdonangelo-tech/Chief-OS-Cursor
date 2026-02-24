@@ -23,7 +23,8 @@ export interface DecisionResult {
 type MinimalEmailEvent = {
   id: string;
   googleAccountId: string;
-  from_: string;
+  date: Date;
+  from_?: string | null;
   senderDomain?: string | null;
   classificationCategoryId?: string | null;
   confidence?: number | null;
@@ -44,19 +45,21 @@ type MinimalCategoryPolicy = {
   archiveAfterDays?: number | null;
 };
 
-function extractEmailAddress(fromHeader: string): string | null {
+function extractEmailAddress(fromHeader?: string | null): string | null {
+  if (!fromHeader || typeof fromHeader !== "string") return null;
   const match = fromHeader.match(/<([^>]+)>/);
-  if (match) return match[1].toLowerCase().trim();
+  if (match?.[1]) return match[1].toLowerCase().trim();
   const trimmed = fromHeader.trim();
   if (trimmed.includes("@")) return trimmed.toLowerCase();
   return null;
 }
 
-function extractDomain(fromHeader: string): string | null {
+function extractDomain(fromHeader?: string | null): string | null {
   const email = extractEmailAddress(fromHeader);
   if (!email) return null;
-  const parts = email.split("@");
-  return parts.length === 2 ? parts[1].toLowerCase() : null;
+  const at = email.lastIndexOf("@");
+  if (at <= 0 || at >= email.length - 1) return null;
+  return email.slice(at + 1).toLowerCase();
 }
 
 function isExplainJsonFromLlm(explainJson: unknown): boolean {
@@ -76,13 +79,17 @@ function addDays(now: Date, days: number): Date {
   return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
+function addHours(date: Date, hours: number): Date {
+  return new Date(date.getTime() + hours * 60 * 60 * 1000);
+}
+
 function normalizePolicyAction(action: string): string {
   return (action ?? "").toLowerCase().trim();
 }
 
 function policyToDecision(
   policy: MinimalCategoryPolicy | undefined,
-  now: Date
+  emailDate: Date
 ): { action: DecisionAction; archiveAt: string | null; overrideReason?: string } {
   if (!policy) return { action: "NONE", archiveAt: null };
 
@@ -93,7 +100,7 @@ function policyToDecision(
   if (a === "move_to_spam") return { action: "SPAM", archiveAt: null };
 
   if (a === "archive_after_48h") {
-    return { action: "ARCHIVE_AT", archiveAt: addDays(now, 2).toISOString() };
+    return { action: "ARCHIVE_AT", archiveAt: addHours(emailDate, 48).toISOString() };
   }
 
   if (a === "archive_after_days" || a === "archive_after_n_days") {
@@ -105,7 +112,7 @@ function policyToDecision(
         overrideReason: `Policy requested ${a} but archiveAfterDays was missing/invalid.`,
       };
     }
-    return { action: "ARCHIVE_AT", archiveAt: addDays(now, n).toISOString() };
+    return { action: "ARCHIVE_AT", archiveAt: addDays(emailDate, n).toISOString() };
   }
 
   // Unknown policy strings are treated conservatively.
@@ -217,7 +224,7 @@ export function decideEmail(
 
   // Action selection based on final category policy.
   const policy = finalCategoryId ? ctx.categoryPoliciesById[finalCategoryId] : undefined;
-  const base = policyToDecision(policy, ctx.now);
+  const base = policyToDecision(policy, emailEvent.date);
   let action = base.action;
   let archiveAt = base.archiveAt;
   if (base.overrideReason) {

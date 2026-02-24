@@ -21,6 +21,7 @@ export function AutoArchiveRunner() {
         `/api/declutter/auto-archive?dryRun=${dryRun}`,
         { method: "POST" }
       );
+    
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed");
       setResult(data);

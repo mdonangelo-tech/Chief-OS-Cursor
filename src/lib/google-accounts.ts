@@ -28,11 +28,49 @@ export async function getGoogleAccountWithTokens(
   });
   if (!acc) return null;
 
+  const encryptedLen = acc.refreshTokenEncrypted?.length ?? 0;
+  const encryptedParts = typeof acc.refreshTokenEncrypted === "string"
+    ? acc.refreshTokenEncrypted.split(":").length
+    : null;
+
+  let refreshToken: string;
+  try {
+    refreshToken = decrypt(acc.refreshTokenEncrypted);
+  } catch (e) {
+    try {
+      const { appendFileSync } = await import("node:fs");
+      appendFileSync(
+        "/Users/mdonangelo/Chief-OS-Cursor/.cursor/debug.log",
+        JSON.stringify({
+          runId: "auto-archive",
+          hypothesisId: "H2",
+          location: "src/lib/google-accounts.ts:getGoogleAccountWithTokens:fallbackFileLog",
+          message: "Failed to decrypt stored refresh token (file fallback)",
+          data: {
+            accountId,
+            encryptedLen,
+            encryptedParts,
+            err: (e as Error)?.message ?? String(e),
+          },
+          timestamp: Date.now(),
+        }) + "\n"
+      );
+    } catch {
+      // ignore
+    }
+    // #region agent log
+    // #endregion
+    throw e;
+  }
+
+  // #region agent log
+  // #endregion
+
   return {
     id: acc.id,
     userId: acc.userId,
     email: acc.email,
-    refreshToken: decrypt(acc.refreshTokenEncrypted),
+    refreshToken,
     accessToken: acc.accessToken,
     tokenExpiry: acc.tokenExpiry,
     userDefinedLabel: acc.userDefinedLabel,

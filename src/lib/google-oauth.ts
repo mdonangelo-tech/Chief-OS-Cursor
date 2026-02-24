@@ -76,6 +76,9 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
     throw new Error("Google OAuth credentials not configured");
   }
 
+  // #region agent log
+  // #endregion
+
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -89,8 +92,29 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
 
   if (!res.ok) {
     const err = await res.text();
+    try {
+      const { appendFileSync } = await import("node:fs");
+      appendFileSync(
+        "/Users/mdonangelo/Chief-OS-Cursor/.cursor/debug.log",
+        JSON.stringify({
+          runId: "auto-archive",
+          hypothesisId: "H3",
+          location: "src/lib/google-oauth.ts:refreshAccessToken:fallbackFileLog",
+          message: "Google token refresh response not ok (file fallback)",
+          data: { status: res.status, errSnippet: err.slice(0, 500) },
+          timestamp: Date.now(),
+        }) + "\n"
+      );
+    } catch {
+      // ignore
+    }
+    // #region agent log
+    // #endregion
     throw new Error(`Token refresh failed: ${err}`);
   }
+
+  // #region agent log
+  // #endregion
 
   return res.json() as Promise<TokenResponse>;
 }

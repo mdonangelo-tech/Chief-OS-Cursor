@@ -15,6 +15,9 @@ export async function POST(req: NextRequest) {
   const url = new URL(req.url);
   const dryRun = url.searchParams.get("dryRun") === "true";
 
+  // #region agent log
+  // #endregion
+
   try {
     const result = await runAutoArchive(session.user.id, dryRun);
     return NextResponse.json({
@@ -24,6 +27,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("Auto-archive error:", err);
+    // #region agent log
+    // #endregion
     return NextResponse.json(
       { error: (err as Error).message },
       { status: 500 }

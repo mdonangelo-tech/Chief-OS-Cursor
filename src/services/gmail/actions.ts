@@ -14,8 +14,36 @@ async function getValidAccessToken(accountId: string, userId: string): Promise<s
 
   const now = Date.now();
   const expiryMs = account.tokenExpiry?.getTime() ?? 0;
-  if (!account.accessToken || expiryMs - now < 5 * 60 * 1000) {
-    const tokens = await refreshAccessToken(account.refreshToken);
+  const shouldRefresh = !account.accessToken || expiryMs - now < 5 * 60 * 1000;
+
+  // #region agent log
+  // #endregion
+
+  if (shouldRefresh) {
+    let tokens;
+    try {
+      tokens = await refreshAccessToken(account.refreshToken);
+    } catch (e) {
+      try {
+        const { appendFileSync } = await import("node:fs");
+        appendFileSync(
+          "/Users/mdonangelo/Chief-OS-Cursor/.cursor/debug.log",
+          JSON.stringify({
+            runId: "auto-archive",
+            hypothesisId: "H1",
+            location: "src/services/gmail/actions.ts:getValidAccessToken:fallbackFileLog",
+            message: "refreshAccessToken threw error (file fallback)",
+            data: { accountId, err: (e as Error)?.message ?? String(e) },
+            timestamp: Date.now(),
+          }) + "\n"
+        );
+      } catch {
+        // ignore
+      }
+      // #region agent log
+      // #endregion
+      throw e;
+    }
     await prisma.googleAccount.update({
       where: { id: accountId },
       data: {
