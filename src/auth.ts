@@ -70,13 +70,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) session.user.id = token.id as string;
       return session;
     },
-    async signIn({ user, account }) {
-      if (account?.provider === "google") {
-        return true;
+    async signIn({ user }) {
+      const allowed = (process.env.DOGFOOD_ALLOWED_EMAILS ?? "")
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+    
+      // If allowlist is set, enforce it.
+      if (allowed.length > 0) {
+        const email = (user?.email ?? "").toLowerCase();
+        if (!email || !allowed.includes(email)) return false;
       }
+    
       return true;
     },
-  },
+    },
+
   events: {
     async linkAccount({ user, account, profile }) {
       if (account.provider !== "google" || !account.refresh_token) return;
