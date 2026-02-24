@@ -8,7 +8,7 @@ const ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
   Configuration: {
     title: "Sign-in configuration error",
     description:
-      "Google sign-in is misconfigured. This often means the Client ID or Client Secret in .env is wrong, or the redirect URI in Google Cloud Console doesn't exactly match: http://localhost:3000/api/auth/callback/google. Verify your credentials and try signing in again.",
+      "Google sign-in is misconfigured. This often means the Client ID or Client Secret env vars are wrong, or the redirect URI in Google Cloud Console doesn't exactly match your AUTH_URL: {AUTH_URL}/api/auth/callback/google. Verify your credentials and try signing in again.",
   },
   AccessDenied: {
     title: "Access denied",

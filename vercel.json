@@ -1,0 +1,30 @@
+{
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.chief-os.ai" }],
+      "destination": "https://chief-os.ai/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "chief-os.co" }],
+      "destination": "https://chief-os.ai/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.chief-os.co" }],
+      "destination": "https://chief-os.ai/:path*",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "api.chief-os.ai" }],
+      "destination": "/api/:path*"
+    }
+  ]
+}
+

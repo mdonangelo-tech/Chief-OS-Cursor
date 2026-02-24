@@ -9,10 +9,10 @@ const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 
 function getKey(): Buffer {
-  const keyHex = process.env.TOKEN_ENCRYPTION_KEY;
+  const keyHex = process.env.ENCRYPTION_KEY ?? process.env.TOKEN_ENCRYPTION_KEY;
   if (!keyHex || keyHex.length !== 64) {
     throw new Error(
-      "TOKEN_ENCRYPTION_KEY must be 32 bytes hex (64 chars). Run: openssl rand -hex 32"
+      "ENCRYPTION_KEY (or TOKEN_ENCRYPTION_KEY) must be 32 bytes hex (64 chars). Run: openssl rand -hex 32"
     );
   }
   return Buffer.from(keyHex, "hex");

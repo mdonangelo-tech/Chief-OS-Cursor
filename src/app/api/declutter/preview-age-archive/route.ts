@@ -5,6 +5,7 @@ import { decideEmail } from "@/lib/decision-engine";
 import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
 import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import type { PreviewAgeArchiveResponse } from "@/types/declutter";
+import { withApiGuard } from "@/lib/api/api-guard";
 
 const PAGE_SIZE = 2000;
 const MAX_SCAN = 50_000;
@@ -26,7 +27,7 @@ function clampDays(raw: string | null): number {
   return Math.max(1, Math.min(365, n));
 }
 
-export async function GET(req: NextRequest) {
+async function getImpl(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
@@ -141,4 +142,6 @@ export async function GET(req: NextRequest) {
   };
   return NextResponse.json(res);
 }
+
+export const GET = withApiGuard(getImpl);
 

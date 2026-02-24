@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decideEmail } from "@/lib/decision-engine";
 import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
 import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import type { PreviewAutoArchiveResponse } from "@/types/declutter";
+import { withApiGuard } from "@/lib/api/api-guard";
 
 const PAGE_SIZE = 2000;
 const MAX_SCAN = 50_000;
@@ -24,7 +25,7 @@ function normalizePolicyAction(action: string): string {
   return (action ?? "").toLowerCase().trim();
 }
 
-export async function GET() {
+async function getImpl(_req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
@@ -168,4 +169,6 @@ export async function GET() {
   };
   return NextResponse.json(res);
 }
+
+export const GET = withApiGuard(getImpl);
 

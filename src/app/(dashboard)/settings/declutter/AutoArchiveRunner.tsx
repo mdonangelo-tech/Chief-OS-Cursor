@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { PreviewAutoArchiveResponse, RunAutoArchiveResponse } from "@/types/declutter";
+import { apiFetch } from "@/lib/api-base";
 
 export function AutoArchiveRunner() {
   const [loading, setLoading] = useState<"preview" | "runPreview" | "run" | null>(null);
@@ -21,7 +22,7 @@ export function AutoArchiveRunner() {
   async function fetchPreview(mode: "preview" | "run") {
     setLoading(mode === "run" ? "runPreview" : "preview");
     try {
-      const res = await fetch("/api/declutter/preview-auto-archive", { method: "GET" });
+      const res = await apiFetch("/api/declutter/preview-auto-archive", { method: "GET" });
       const data = (await res.json()) as PreviewAutoArchiveResponse | { error?: string };
       if (!res.ok || !("ok" in data)) throw new Error((data as any).error ?? "Failed");
       setPreview(data as PreviewAutoArchiveResponse);
@@ -39,7 +40,7 @@ export function AutoArchiveRunner() {
   async function runArchive() {
     setLoading("run");
     try {
-      const res = await fetch("/api/declutter/run-auto-archive", { method: "POST" });
+      const res = await apiFetch("/api/declutter/run-auto-archive", { method: "POST" });
       const data = (await res.json()) as RunAutoArchiveResponse | { error?: string };
       if (!res.ok || !("ok" in data)) throw new Error((data as any).error ?? "Failed");
       showToast(

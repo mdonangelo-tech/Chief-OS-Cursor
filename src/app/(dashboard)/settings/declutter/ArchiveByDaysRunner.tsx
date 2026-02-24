@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { PreviewAgeArchiveResponse, RunAutoArchiveResponse } from "@/types/declutter";
+import { apiFetch } from "@/lib/api-base";
 
 const DAY_OPTIONS = [7, 14, 30, 60, 90];
 
@@ -29,7 +30,7 @@ export function ArchiveByDaysRunner() {
   async function fetchPreview(mode: "preview" | "run") {
     setLoading(mode === "run" ? "runPreview" : "preview");
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/declutter/preview-age-archive?days=${encodeURIComponent(String(days))}`,
         { method: "GET" }
       );
@@ -50,7 +51,7 @@ export function ArchiveByDaysRunner() {
   async function runArchive() {
     setLoading("run");
     try {
-      const res = await fetch("/api/declutter/run-auto-archive", { method: "POST" });
+      const res = await apiFetch("/api/declutter/run-auto-archive", { method: "POST" });
       const data = (await res.json()) as RunAutoArchiveResponse | { error?: string };
       if (!res.ok || !("ok" in data)) throw new Error((data as any).error ?? "Failed");
       showToast(

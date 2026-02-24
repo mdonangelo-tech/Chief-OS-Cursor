@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { getConnectGoogleAuthUrl } from "@/lib/google-oauth";
+import { getAuthUrl } from "@/lib/env";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -10,10 +11,10 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect(new URL("/login", process.env.AUTH_URL ?? "http://localhost:3000"));
+    return NextResponse.redirect(new URL("/login", getAuthUrl()));
   }
 
-  const baseUrl = process.env.AUTH_URL ?? "http://localhost:3000";
+  const baseUrl = getAuthUrl();
   const redirectUri = `${baseUrl}/api/connect-google/callback`;
   const returnTo = req.nextUrl.searchParams.get("returnTo");
 

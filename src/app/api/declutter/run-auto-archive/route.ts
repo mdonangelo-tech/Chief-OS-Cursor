@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { randomUUID } from "crypto";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +7,7 @@ import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
 import { archiveMessage, moveToSpamMessage } from "@/services/gmail/actions";
 import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import type { RunAutoArchiveResponse } from "@/types/declutter";
+import { withApiGuard } from "@/lib/api/api-guard";
 
 const MAX_PER_CALL = 100;
 const PAGE_SIZE = 2000;
@@ -27,16 +28,16 @@ function normalizePolicyAction(action: string): string {
   return (action ?? "").toLowerCase().trim();
 }
 
-export async function GET() {
+export const GET = withApiGuard(async (_req: NextRequest) => {
   // Browsers show a scary error page for 405s; return a friendly 200 JSON instead.
   return NextResponse.json({
     ok: false,
     error: "Use POST /api/declutter/run-auto-archive to run auto-archive.",
     hint: "If you want a read-only preview, use GET /api/declutter/preview-auto-archive.",
   });
-}
+});
 
-export async function POST() {
+async function postImpl(_req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
@@ -259,4 +260,6 @@ export async function POST() {
   const res: RunAutoArchiveResponse = { ok: true, processed, remainingEligible };
   return NextResponse.json(res);
 }
+
+export const POST = withApiGuard(postImpl);
 
