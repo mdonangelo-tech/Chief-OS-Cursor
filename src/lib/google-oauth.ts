@@ -92,6 +92,21 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
 
   if (!res.ok) {
     const err = await res.text();
+    // Normalize common OAuth failure for better UX.
+    // Google returns {"error":"invalid_grant","error_description":"Token has been expired or revoked."}
+    // when the refresh token is no longer usable; the user must reconnect.
+    let isInvalidGrant = false;
+    try {
+      const parsed = JSON.parse(err) as { error?: unknown; error_description?: unknown };
+      isInvalidGrant = parsed?.error === "invalid_grant";
+    } catch {
+      // ignore JSON parse errors
+    }
+    if (isInvalidGrant) {
+      throw new Error(
+        "Google authorization expired or was revoked. Reconnect your Google account in Settings → Accounts."
+      );
+    }
     try {
       const { appendFileSync } = await import("node:fs");
       appendFileSync(

@@ -56,6 +56,9 @@ async function getValidAccessToken(accountId: string, userId: string): Promise<s
     });
     return tokens.access_token;
   }
+  if (!account.accessToken) {
+    throw new Error("Missing access token");
+  }
   return account.accessToken;
 }
 

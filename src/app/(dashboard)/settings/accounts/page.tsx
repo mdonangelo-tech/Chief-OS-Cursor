@@ -44,6 +44,16 @@ export default async function AccountsPage({
           Sync completed
         </div>
       )}
+      {params.sync === "warn" && (
+        <div className="rounded-lg bg-amber-950/40 border border-amber-800 px-4 py-3 text-amber-200 text-sm">
+          Sync completed with some errors
+        </div>
+      )}
+      {params.sync === "reconnect" && (
+        <div className="rounded-lg bg-red-950/50 border border-red-800 px-4 py-3 text-red-300 text-sm">
+          Sync failed: Google authorization expired or was revoked. Reconnect your Google account below.
+        </div>
+      )}
       {params.sync === "error" && (
         <div className="rounded-lg bg-red-950/50 border border-red-800 px-4 py-3 text-red-300 text-sm">
           Sync failed
@@ -55,7 +65,10 @@ export default async function AccountsPage({
         {googleAccounts.length > 0 && (
           <ul className="space-y-2">
             {googleAccounts.map((acc) => {
-              const syncState = acc.syncStateJson as { lastSyncAt?: string } | null;
+              const syncState = acc.syncStateJson as
+                | { lastSyncAt?: string; authError?: { code?: string; message?: string } | null }
+                | null;
+              const needsReconnect = syncState?.authError?.code === "RECONNECT_REQUIRED";
               return (
                 <li
                   key={acc.id}
@@ -73,7 +86,22 @@ export default async function AccountsPage({
                         last sync {new Date(syncState.lastSyncAt).toLocaleString()}
                       </span>
                     )}
+                    {needsReconnect && (
+                      <span className="ml-2 text-red-400 text-xs">
+                        reconnect required
+                      </span>
+                    )}
                   </div>
+                  <a
+                    href="/api/connect-google?returnTo=/settings/accounts"
+                    className={
+                      needsReconnect
+                        ? "text-sm text-amber-400 hover:text-amber-300"
+                        : "text-sm text-zinc-500 hover:text-zinc-300"
+                    }
+                  >
+                    Reconnect
+                  </a>
                 </li>
               );
             })}
