@@ -4,7 +4,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decideEmail } from "@/lib/decision-engine";
 import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
-import { archiveMessage } from "@/services/gmail/actions";
+import { archiveMessage, moveToSpamMessage } from "@/services/gmail/actions";
+import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import type { RunAutoArchiveResponse } from "@/types/declutter";
 
 const MAX_PER_CALL = 100;
@@ -46,7 +47,7 @@ export async function POST() {
       await prisma.auditLog.findMany({
         where: {
           userId,
-          actionType: "ARCHIVE",
+          actionType: { in: ["ARCHIVE", "SPAM"] },
           messageId: { not: null },
         },
         select: { messageId: true },
@@ -60,6 +61,7 @@ export async function POST() {
     where: {
       googleAccountId: { in: accountIds },
       labels: { has: "INBOX" },
+      NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
       messageId: { notIn: Array.from(alreadyArchived) },
     },
     select: {
@@ -80,6 +82,18 @@ export async function POST() {
     take: 2000,
   });
 
+  function uniqueLabels(labels: string[]): string[] {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const l of labels) {
+      if (!seen.has(l)) {
+        seen.add(l);
+        out.push(l);
+      }
+    }
+    return out;
+  }
+
   const eligible = [];
   for (const e of candidates) {
     const decision = decideEmail(
@@ -95,7 +109,7 @@ export async function POST() {
       },
       ctx
     );
-    if (decision.action !== "ARCHIVE_AT") continue;
+    if (decision.action !== "ARCHIVE_AT" && decision.action !== "SPAM") continue;
     if (!decision.archiveAt) continue;
     if (new Date(decision.archiveAt).getTime() > now.getTime()) continue;
     eligible.push({ e, decision });
@@ -114,19 +128,43 @@ export async function POST() {
 
   let processed = 0;
   for (const { e, decision } of eligible) {
-    await archiveMessage(
-      userId,
-      e.googleAccountId,
-      e.messageId,
-      JSON.stringify(decision.reason),
-      decisionConfidence(decision),
-      runId
-    );
+    if (decision.action === "SPAM") {
+      const { afterLabels } = await moveToSpamMessage(
+        userId,
+        e.googleAccountId,
+        e.messageId,
+        JSON.stringify(decision.reason),
+        decisionConfidence(decision),
+        runId
+      );
 
-    await prisma.emailEvent.update({
-      where: { id: e.id },
-      data: { unread: false },
-    });
+      const nextLabels = uniqueLabels(
+        afterLabels.filter((l) => l !== "INBOX").concat(["SPAM"])
+      );
+
+      await prisma.emailEvent.update({
+        where: { id: e.id },
+        data: { labels: nextLabels, unread: false },
+      });
+    } else {
+      const { afterLabels } = await archiveMessage(
+        userId,
+        e.googleAccountId,
+        e.messageId,
+        JSON.stringify(decision.reason),
+        decisionConfidence(decision),
+        runId
+      );
+
+      const nextLabels = uniqueLabels(
+        afterLabels.filter((l) => l !== "INBOX").concat([CHIEFOS_ARCHIVED_LABEL])
+      );
+
+      await prisma.emailEvent.update({
+        where: { id: e.id },
+        data: { labels: nextLabels, unread: false },
+      });
+    }
 
     processed++;
   }

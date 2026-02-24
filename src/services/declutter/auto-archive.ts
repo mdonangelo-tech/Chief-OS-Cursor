@@ -8,6 +8,7 @@
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { archiveMessage, moveToSpamMessage } from "@/services/gmail/actions";
+import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 
 const HOURS_48_MS = 48 * 60 * 60 * 1000;
 
@@ -158,7 +159,7 @@ export async function runAutoArchive(
     try {
       const action = categoryActions.get(e.classificationCategoryId!) ?? "archive_after_48h";
       if (action === "move_to_spam") {
-        await moveToSpamMessage(
+        const { afterLabels } = await moveToSpamMessage(
           userId,
           e.googleAccountId,
           e.messageId,
@@ -166,8 +167,15 @@ export async function runAutoArchive(
           0.9,
           runId
         );
+        await prisma.emailEvent.update({
+          where: { id: e.id },
+          data: {
+            labels: Array.from(new Set(afterLabels.filter((l) => l !== "INBOX").concat(["SPAM"]))),
+            unread: false,
+          },
+        });
       } else {
-        await archiveMessage(
+        const { afterLabels } = await archiveMessage(
           userId,
           e.googleAccountId,
           e.messageId,
@@ -175,11 +183,14 @@ export async function runAutoArchive(
           0.9,
           runId
         );
+        await prisma.emailEvent.update({
+          where: { id: e.id },
+          data: {
+            labels: Array.from(new Set(afterLabels.filter((l) => l !== "INBOX").concat([CHIEFOS_ARCHIVED_LABEL]))),
+            unread: false,
+          },
+        });
       }
-      await prisma.emailEvent.update({
-        where: { id: e.id },
-        data: { unread: false },
-      });
       result.archived++;
     } catch (err) {
       result.errors.push(`${e.messageId}: ${(err as Error).message}`);

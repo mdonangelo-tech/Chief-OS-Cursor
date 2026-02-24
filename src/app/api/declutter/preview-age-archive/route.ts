@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decideEmail } from "@/lib/decision-engine";
 import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
+import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import type { PreviewAgeArchiveResponse } from "@/types/declutter";
 
 function clampDays(raw: string | null): number {
@@ -46,6 +47,7 @@ export async function GET(req: NextRequest) {
     where: {
       googleAccountId: { in: accountIds },
       labels: { has: "INBOX" },
+      NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
       date: { lte: cutoff },
     },
     select: {

@@ -168,7 +168,7 @@ export async function moveToSpamMessage(
   reason: string,
   confidence?: number,
   runId?: string
-): Promise<{ auditLogId: string }> {
+): Promise<{ auditLogId: string; afterLabels: string[] }> {
   const account = await prisma.googleAccount.findFirst({
     where: { id: googleAccountId, userId },
   });
@@ -198,7 +198,7 @@ export async function moveToSpamMessage(
     },
   });
 
-  return { auditLogId: audit.id };
+  return { auditLogId: audit.id, afterLabels };
 }
 
 export async function archiveMessage(
@@ -208,7 +208,7 @@ export async function archiveMessage(
   reason: string,
   confidence?: number,
   runId?: string
-): Promise<{ auditLogId: string }> {
+): Promise<{ auditLogId: string; afterLabels: string[] }> {
   const account = await prisma.googleAccount.findFirst({
     where: { id: googleAccountId, userId },
   });
@@ -243,7 +243,7 @@ export async function archiveMessage(
     },
   });
 
-  return { auditLogId: audit.id };
+  return { auditLogId: audit.id, afterLabels };
 }
 
 export async function rollbackArchive(

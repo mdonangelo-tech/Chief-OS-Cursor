@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decideEmail } from "@/lib/decision-engine";
 import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
+import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import type { PreviewAutoArchiveResponse } from "@/types/declutter";
 
 export async function GET() {
@@ -38,6 +39,7 @@ export async function GET() {
     where: {
       googleAccountId: { in: accountIds },
       labels: { has: "INBOX" },
+      NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
     },
     select: {
       id: true,
@@ -83,7 +85,7 @@ export async function GET() {
     // Count cases where protection prevented an archive action.
     if (wasBlockedByProtection && decision.action !== "ARCHIVE_AT") protectedBlockedCount++;
 
-    if (decision.action !== "ARCHIVE_AT") continue;
+    if (decision.action !== "ARCHIVE_AT" && decision.action !== "SPAM") continue;
     if (!decision.archiveAt) continue;
     if (new Date(decision.archiveAt).getTime() > now.getTime()) continue;
 
