@@ -10,6 +10,7 @@ import { DeclutterSection } from "./DeclutterSection";
 import Link from "next/link";
 
 type AccountFilter = "all" | "personal" | "work";
+const MAX_OPEN_LOOPS_RENDER = 30;
 
 function matchFilter(label: string | null, filter: AccountFilter): boolean {
   if (filter === "all") return true;
@@ -85,7 +86,12 @@ export function BriefContent({ payload }: { payload: BriefPayload }) {
         )}
       </section>
 
-      <OpenLoopsSection loops={openLoops} />
+      <OpenLoopsSection loops={openLoops.slice(0, MAX_OPEN_LOOPS_RENDER)} />
+      {openLoops.length > MAX_OPEN_LOOPS_RENDER && (
+        <p className="text-zinc-600 text-xs">
+          Showing {MAX_OPEN_LOOPS_RENDER} of {openLoops.length}. Tighten filters above to narrow.
+        </p>
+      )}
 
       <CalendarWatchoutsSection
         summary={payload.calendarWatchouts.summary}

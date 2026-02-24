@@ -5,6 +5,9 @@ import { BriefHeader } from "@/app/(dashboard)/brief/BriefHeader";
 import { BriefContent } from "@/app/(dashboard)/brief/BriefContent";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function firstName(user: { name?: string | null; email?: string | null }): string {
   if (user?.name?.trim()) {
     const first = user.name.trim().split(/\s+/)[0];

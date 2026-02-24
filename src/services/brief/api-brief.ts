@@ -133,6 +133,8 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       where: {
         googleAccountId: { in: accountIds },
         unread: true,
+        // Brief is an inbox scan; exclude mail that's no longer in INBOX.
+        labels: { has: "INBOX" },
       },
       include: { category: true, googleAccount: true },
       orderBy: { date: "desc" },
@@ -226,9 +228,9 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       });
     }
   }
-  const openLoops = openLoopCandidates
-    .sort((a, b) => a.lastDate.getTime() - b.lastDate.getTime())
-    .slice(0, MAX_OPEN_LOOPS);
+  const openLoops = openLoopCandidates.sort(
+    (a, b) => a.lastDate.getTime() - b.lastDate.getTime()
+  );
 
   const eventsByDay = new Map<string, typeof upcomingEvents>();
   for (const e of upcomingEvents) {
