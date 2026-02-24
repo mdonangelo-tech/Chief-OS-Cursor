@@ -3,7 +3,6 @@ import { syncGmailForUser } from "@/services/gmail/sync";
 import { syncCalendarForUser } from "@/services/calendar/sync";
 import { enrichUpcomingCalendarEvents } from "@/services/classification/calendar";
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 
 /**
  * POST /api/sync/all
@@ -33,12 +32,6 @@ export async function POST() {
       calendar.every((r) =>
         (r.errors ?? []).some((e) => e.toLowerCase().includes("reconnect"))
       );
-
-    // Ensure dashboard pages reflect new data immediately.
-    revalidatePath("/brief");
-    revalidatePath("/settings/declutter");
-    revalidatePath("/settings/declutter/preview");
-    revalidatePath("/settings/accounts");
 
     return NextResponse.json({
       ok: true,

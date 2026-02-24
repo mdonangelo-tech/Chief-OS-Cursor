@@ -9,6 +9,15 @@ import type { RunAutoArchiveResponse } from "@/types/declutter";
 
 const MAX_PER_CALL = 100;
 
+export async function GET() {
+  // Browsers show a scary error page for 405s; return a friendly 200 JSON instead.
+  return NextResponse.json({
+    ok: false,
+    error: "Use POST /api/declutter/run-auto-archive to run auto-archive.",
+    hint: "If you want a read-only preview, use GET /api/declutter/preview-auto-archive.",
+  });
+}
+
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id) {

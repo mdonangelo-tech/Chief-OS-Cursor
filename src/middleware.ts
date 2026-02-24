@@ -6,8 +6,11 @@ export default auth((req) => {
   const isAuthPage = req.nextUrl.pathname.startsWith("/login");
   const isDevPage = req.nextUrl.pathname.startsWith("/dev/");
   const isApiAuth = req.nextUrl.pathname.startsWith("/api/auth");
+  const isApi = req.nextUrl.pathname.startsWith("/api/");
 
   if (isApiAuth) return NextResponse.next();
+  // Never redirect API routes to HTML login pages; API routes should return JSON 401.
+  if (isApi) return NextResponse.next();
   if (isDevPage) return NextResponse.next();
   if (isAuthPage && isLoggedIn) return Response.redirect(new URL("/brief", req.url));
   if (isLoggedIn && req.nextUrl.pathname === "/") {
