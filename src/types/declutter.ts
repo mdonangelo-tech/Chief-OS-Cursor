@@ -18,6 +18,7 @@ export type PreviewAutoArchiveResponse = {
 export type RunAutoArchiveResponse = {
   ok: true;
   processed: number;
+  remainingEligible: number;
 };
 
 export type PreviewAgeArchiveResponse = {

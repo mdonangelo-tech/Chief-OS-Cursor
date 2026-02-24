@@ -9,6 +9,23 @@ import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import type { RunAutoArchiveResponse } from "@/types/declutter";
 
 const MAX_PER_CALL = 100;
+const PAGE_SIZE = 2000;
+const MAX_SCAN = 50_000;
+
+type ScanRow = {
+  id: string;
+  googleAccountId: string;
+  date: Date;
+  from_: string;
+  senderDomain: string | null;
+  classificationCategoryId: string | null;
+  confidence: number | null;
+  explainJson: unknown;
+};
+
+function normalizePolicyAction(action: string): string {
+  return (action ?? "").toLowerCase().trim();
+}
 
 export async function GET() {
   // Browsers show a scary error page for 405s; return a friendly 200 JSON instead.
@@ -35,7 +52,7 @@ export async function POST() {
   });
   const accountIds = accounts.map((a) => a.id);
   if (accountIds.length === 0) {
-    const empty: RunAutoArchiveResponse = { ok: true, processed: 0 };
+    const empty: RunAutoArchiveResponse = { ok: true, processed: 0, remainingEligible: 0 };
     return NextResponse.json(empty);
   }
 
@@ -169,7 +186,77 @@ export async function POST() {
     processed++;
   }
 
-  const res: RunAutoArchiveResponse = { ok: true, processed };
+  // Re-count eligible after this batch so the UI can say what's left.
+  let minEligibleDays: number | null = null;
+  for (const p of Object.values(ctx.categoryPoliciesById)) {
+    if (!p) continue;
+    const a = normalizePolicyAction(p.action);
+    if (a === "archive_after_48h") {
+      minEligibleDays = minEligibleDays == null ? 2 : Math.min(minEligibleDays, 2);
+    } else if (a === "archive_after_days" || a === "archive_after_n_days") {
+      const n = p.archiveAfterDays;
+      if (typeof n === "number" && Number.isFinite(n) && n > 0) {
+        minEligibleDays = minEligibleDays == null ? n : Math.min(minEligibleDays, n);
+      }
+    }
+  }
+  const recountNow = new Date();
+  const cutoff = minEligibleDays != null
+    ? new Date(recountNow.getTime() - minEligibleDays * 24 * 60 * 60 * 1000)
+    : null;
+
+  let remainingEligible = 0;
+  let scanned = 0;
+  let cursorId: string | null = null;
+  while (scanned < MAX_SCAN) {
+    const page: ScanRow[] = await prisma.emailEvent.findMany({
+      where: {
+        googleAccountId: { in: accountIds },
+        labels: { has: "INBOX" },
+        NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
+        ...(cutoff ? { date: { lte: cutoff } } : {}),
+      },
+      select: {
+        id: true,
+        googleAccountId: true,
+        date: true,
+        from_: true,
+        senderDomain: true,
+        classificationCategoryId: true,
+        confidence: true,
+        explainJson: true,
+      },
+      orderBy: { id: "asc" },
+      take: PAGE_SIZE,
+      ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+    });
+    if (page.length === 0) break;
+    cursorId = page[page.length - 1].id;
+
+    for (const e of page) {
+      scanned++;
+      const decision = decideEmail(
+        {
+          id: e.id,
+          googleAccountId: e.googleAccountId,
+          date: e.date,
+          from_: e.from_,
+          senderDomain: e.senderDomain,
+          classificationCategoryId: e.classificationCategoryId,
+          confidence: e.confidence,
+          explainJson: e.explainJson,
+        },
+        ctx
+      );
+      if (decision.action !== "ARCHIVE_AT" && decision.action !== "SPAM") continue;
+      if (!decision.archiveAt) continue;
+      if (new Date(decision.archiveAt).getTime() > recountNow.getTime()) continue;
+      remainingEligible++;
+      if (scanned >= MAX_SCAN) break;
+    }
+  }
+
+  const res: RunAutoArchiveResponse = { ok: true, processed, remainingEligible };
   return NextResponse.json(res);
 }
 
