@@ -68,10 +68,17 @@ export function DeclutterSection({ summary, groups }: DeclutterSectionProps) {
               key={key}
               className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden"
             >
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setExpanded((s) => ({ ...s, [key]: !s[key] }))}
-                className="w-full px-4 py-2 flex items-center justify-between text-left bg-zinc-800/30 hover:bg-zinc-800/50"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setExpanded((s) => ({ ...s, [key]: !s[key] }));
+                  }
+                }}
+                className="w-full px-4 py-2 flex items-center justify-between text-left bg-zinc-800/30 hover:bg-zinc-800/50 cursor-pointer"
               >
                 <span className="font-medium text-zinc-300 truncate">{g.sender}</span>
                 <span className="flex items-center gap-2 shrink-0">
@@ -89,7 +96,7 @@ export function DeclutterSection({ summary, groups }: DeclutterSectionProps) {
                   )}
                   <span className="text-zinc-500 text-xs">{g.items.length} items</span>
                 </span>
-              </button>
+              </div>
               {isExp && (
                 <ul className="px-4 py-2 divide-y divide-zinc-800/50">
                   {g.items.slice(0, 3).map((it) => (
