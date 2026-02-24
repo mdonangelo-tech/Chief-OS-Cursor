@@ -170,7 +170,7 @@ export async function runAutoArchive(
         await prisma.emailEvent.update({
           where: { id: e.id },
           data: {
-            labels: Array.from(new Set(afterLabels.filter((l) => l !== "INBOX").concat(["SPAM"]))),
+            labels: { set: Array.from(new Set(afterLabels.filter((l) => l !== "INBOX").concat(["SPAM"]))) },
             unread: false,
           },
         });
@@ -186,7 +186,7 @@ export async function runAutoArchive(
         await prisma.emailEvent.update({
           where: { id: e.id },
           data: {
-            labels: Array.from(new Set(afterLabels.filter((l) => l !== "INBOX").concat([CHIEFOS_ARCHIVED_LABEL]))),
+            labels: { set: Array.from(new Set(afterLabels.filter((l) => l !== "INBOX").concat([CHIEFOS_ARCHIVED_LABEL]))) },
             unread: false,
           },
         });

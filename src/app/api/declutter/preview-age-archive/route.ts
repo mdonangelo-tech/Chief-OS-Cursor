@@ -6,6 +6,20 @@ import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
 import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import type { PreviewAgeArchiveResponse } from "@/types/declutter";
 
+const PAGE_SIZE = 2000;
+const MAX_SCAN = 50_000;
+
+type ScanRow = {
+  id: string;
+  googleAccountId: string;
+  date: Date;
+  from_: string;
+  senderDomain: string | null;
+  classificationCategoryId: string | null;
+  confidence: number | null;
+  explainJson: unknown;
+};
+
 function clampDays(raw: string | null): number {
   const n = parseInt(raw ?? "30", 10);
   if (!Number.isFinite(n)) return 30;
@@ -43,63 +57,68 @@ export async function GET(req: NextRequest) {
   const ctx = await buildDeclutterDecisionCtx(userId, now);
   const categoriesById = ctx.categoriesById;
 
-  const emails = await prisma.emailEvent.findMany({
-    where: {
-      googleAccountId: { in: accountIds },
-      labels: { has: "INBOX" },
-      NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
-      date: { lte: cutoff },
-    },
-    select: {
-      id: true,
-      googleAccountId: true,
-      messageId: true,
-      from_: true,
-      subject: true,
-      snippet: true,
-      date: true,
-      labels: true,
-      senderDomain: true,
-      classificationCategoryId: true,
-      confidence: true,
-      explainJson: true,
-    },
-    orderBy: { date: "asc" },
-    take: 2000,
-  });
-
   let excludedProtectedCount = 0;
   const byCategoryCounts = new Map<string | null, number>();
   let oldestDate: string | null = null;
   let newestDate: string | null = null;
 
-  for (const e of emails) {
-    const decision = decideEmail(
-      {
-        id: e.id,
-        googleAccountId: e.googleAccountId,
-        date: e.date,
-        from_: e.from_,
-        senderDomain: e.senderDomain,
-        classificationCategoryId: e.classificationCategoryId,
-        confidence: e.confidence,
-        explainJson: e.explainJson,
+  let scanned = 0;
+  let cursorId: string | null = null;
+  while (scanned < MAX_SCAN) {
+    const page: ScanRow[] = await prisma.emailEvent.findMany({
+      where: {
+        googleAccountId: { in: accountIds },
+        labels: { has: "INBOX" },
+        NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
+        date: { lte: cutoff },
       },
-      ctx
-    );
+      select: {
+        id: true,
+        googleAccountId: true,
+        date: true,
+        from_: true,
+        senderDomain: true,
+        classificationCategoryId: true,
+        confidence: true,
+        explainJson: true,
+      },
+      orderBy: { id: "asc" },
+      take: PAGE_SIZE,
+      ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+    });
+    if (page.length === 0) break;
+    cursorId = page[page.length - 1].id;
 
-    const catId = decision.finalCategoryId;
-    const cat = catId ? categoriesById[catId] : null;
-    if (cat?.protectedFromAutoArchive) {
-      excludedProtectedCount++;
-      continue;
+    for (const e of page) {
+      scanned++;
+      const decision = decideEmail(
+        {
+          id: e.id,
+          googleAccountId: e.googleAccountId,
+          date: e.date,
+          from_: e.from_,
+          senderDomain: e.senderDomain,
+          classificationCategoryId: e.classificationCategoryId,
+          confidence: e.confidence,
+          explainJson: e.explainJson,
+        },
+        ctx
+      );
+
+      const catId = decision.finalCategoryId;
+      const cat = catId ? categoriesById[catId] : null;
+      if (cat?.protectedFromAutoArchive) {
+        excludedProtectedCount++;
+        continue;
+      }
+
+      byCategoryCounts.set(catId, (byCategoryCounts.get(catId) ?? 0) + 1);
+
+      const iso = e.date.toISOString();
+      if (!oldestDate) oldestDate = iso;
+      newestDate = iso;
+      if (scanned >= MAX_SCAN) break;
     }
-
-    byCategoryCounts.set(catId, (byCategoryCounts.get(catId) ?? 0) + 1);
-
-    const iso = e.date.toISOString();
-    if (!oldestDate) oldestDate = iso;
-    newestDate = iso;
   }
 
   const byCategory = Array.from(byCategoryCounts.entries())

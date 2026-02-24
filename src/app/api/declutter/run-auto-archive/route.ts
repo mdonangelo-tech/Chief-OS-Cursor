@@ -144,7 +144,7 @@ export async function POST() {
 
       await prisma.emailEvent.update({
         where: { id: e.id },
-        data: { labels: nextLabels, unread: false },
+        data: { labels: { set: nextLabels }, unread: false },
       });
     } else {
       const { afterLabels } = await archiveMessage(
@@ -162,7 +162,7 @@ export async function POST() {
 
       await prisma.emailEvent.update({
         where: { id: e.id },
-        data: { labels: nextLabels, unread: false },
+        data: { labels: { set: nextLabels }, unread: false },
       });
     }
 
