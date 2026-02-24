@@ -1,204 +1,256 @@
-// src/lib/decision-engine.ts
+export type DecisionAction = "NONE" | "LABEL_ONLY" | "DIGEST" | "ARCHIVE_AT" | "SPAM";
 
-export type DecisionAction =
-  | "NONE"
-  | "LABEL_ONLY"
-  | "DIGEST"
-  | "ARCHIVE_AFTER_48H"
-  | "ARCHIVE_AFTER_N_DAYS"
-  | "MOVE_TO_SPAM";
-
-export type CategoryDeclutterPolicy =
-  | { action: "LABEL_ONLY" | "DIGEST" | "NONE" }
-  | { action: "ARCHIVE_AFTER_48H" }
-  | { action: "ARCHIVE_AFTER_N_DAYS"; days: number }
-  | { action: "MOVE_TO_SPAM" };
-
-export type DecideEmailContext = {
-  now: Date;
-
-  // candidate categories (already resolved to a categoryId)
-  personRuleCategoryId?: string | null;
-  domainRuleCategoryId?: string | null;
-  llmCategoryId?: string | null;
-
-  // default category id, typically "Other"
-  defaultCategoryId?: string | null;
-
-  // category metadata
-  categoryById: Record<
-    string,
-    {
-      id: string;
-      name: string;
-      // if true: cannot be auto-archived or moved to spam
-      protected?: boolean;
-      declutterPolicy: CategoryDeclutterPolicy;
-    }
-  >;
-};
-
-export type EmailEventInput = {
-  id: string;
-  date: Date;
-  from?: string | null;
-  senderDomain?: string | null;
-  // existing classification (optional, used only as fallback if you want)
-  classificationCategoryId?: string | null;
-};
-
-export type DecideEmailReason = {
-  winner: "PERSON_RULE" | "DOMAIN_RULE" | "LLM" | "DEFAULT" | "NONE";
-  chosenCategoryId: string | null;
-  chosenCategoryName: string | null;
-  candidates: {
-    personRuleCategoryId?: string | null;
-    domainRuleCategoryId?: string | null;
-    llmCategoryId?: string | null;
-    defaultCategoryId?: string | null;
-  };
-  overrides: Array<{
-    type: "PROTECTED_CATEGORY_BLOCK";
-    blockedAction: DecisionAction;
-    reason: string;
-  }>;
-};
-
-export type DecideEmailResult = {
+export interface DecisionResult {
+  emailEventId: string;
+  googleAccountId: string;
   finalCategoryId: string | null;
   action: DecisionAction;
-  archiveAt: Date | null;
-  reason: DecideEmailReason;
+  archiveAt: string | null;
+  reason: {
+    winner: "personRule" | "domainRule" | "llm" | "default";
+    candidates: Array<{
+      source: string;
+      categoryId: string;
+      confidence?: number;
+    }>;
+    overrides: Array<{
+      overriddenSource: string;
+      reason: string;
+    }>;
+  };
+}
+
+type MinimalEmailEvent = {
+  id: string;
+  googleAccountId: string;
+  from_: string;
+  senderDomain?: string | null;
+  classificationCategoryId?: string | null;
+  confidence?: number | null;
+  explainJson?: unknown;
 };
 
-function addDays(date: Date, days: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
+type MinimalPersonRule = { email: string; categoryId: string; id?: string };
+type MinimalOrgRule = { domain: string; categoryId: string; id?: string };
+
+type MinimalCategory = {
+  id: string;
+  name: string;
+  protectedFromAutoArchive?: boolean | null;
+};
+
+type MinimalCategoryPolicy = {
+  action: string;
+  archiveAfterDays?: number | null;
+};
+
+function extractEmailAddress(fromHeader: string): string | null {
+  const match = fromHeader.match(/<([^>]+)>/);
+  if (match) return match[1].toLowerCase().trim();
+  const trimmed = fromHeader.trim();
+  if (trimmed.includes("@")) return trimmed.toLowerCase();
+  return null;
 }
 
-function addHours(date: Date, hours: number): Date {
-  const d = new Date(date);
-  d.setHours(d.getHours() + hours);
-  return d;
+function extractDomain(fromHeader: string): string | null {
+  const email = extractEmailAddress(fromHeader);
+  if (!email) return null;
+  const parts = email.split("@");
+  return parts.length === 2 ? parts[1].toLowerCase() : null;
 }
 
-function categoryName(ctx: DecideEmailContext, categoryId: string | null) {
-  if (!categoryId) return null;
-  return ctx.categoryById[categoryId]?.name ?? null;
+function isExplainJsonFromLlm(explainJson: unknown): boolean {
+  if (!explainJson || typeof explainJson !== "object") return false;
+  const source = (explainJson as { source?: unknown }).source;
+  return source === "llm";
 }
 
-function computeActionAndArchiveAt(
-  email: EmailEventInput,
-  ctx: DecideEmailContext,
-  categoryId: string
-): { action: DecisionAction; archiveAt: Date | null } {
-  const meta = ctx.categoryById[categoryId];
-  const policy = meta?.declutterPolicy;
+function findDefaultOtherCategoryId(categoriesById: Record<string, MinimalCategory>): string | null {
+  for (const c of Object.values(categoriesById)) {
+    if ((c.name ?? "").toLowerCase() === "other") return c.id;
+  }
+  return null;
+}
 
+function addDays(now: Date, days: number): Date {
+  return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+function normalizePolicyAction(action: string): string {
+  return (action ?? "").toLowerCase().trim();
+}
+
+function policyToDecision(
+  policy: MinimalCategoryPolicy | undefined,
+  now: Date
+): { action: DecisionAction; archiveAt: string | null; overrideReason?: string } {
   if (!policy) return { action: "NONE", archiveAt: null };
 
-  switch (policy.action) {
-    case "NONE":
-      return { action: "NONE", archiveAt: null };
-    case "LABEL_ONLY":
-      return { action: "LABEL_ONLY", archiveAt: null };
-    case "DIGEST":
-      return { action: "DIGEST", archiveAt: null };
-    case "ARCHIVE_AFTER_48H":
-      return { action: "ARCHIVE_AFTER_48H", archiveAt: addHours(email.date, 48) };
-    case "ARCHIVE_AFTER_N_DAYS":
-      return { action: "ARCHIVE_AFTER_N_DAYS", archiveAt: addDays(email.date, policy.days) };
-    case "MOVE_TO_SPAM":
-      return { action: "MOVE_TO_SPAM", archiveAt: null };
-  }
-}
+  const a = normalizePolicyAction(policy.action);
+  if (a === "never") return { action: "NONE", archiveAt: null };
+  if (a === "label_only") return { action: "LABEL_ONLY", archiveAt: null };
+  if (a === "label+digest") return { action: "DIGEST", archiveAt: null };
+  if (a === "move_to_spam") return { action: "SPAM", archiveAt: null };
 
-function applyProtectedOverrides(
-  ctx: DecideEmailContext,
-  categoryId: string,
-  action: DecisionAction,
-  archiveAt: Date | null
-): { action: DecisionAction; archiveAt: Date | null; overrides: DecideEmailReason["overrides"] } {
-  const meta = ctx.categoryById[categoryId];
-  const isProtected = Boolean(meta?.protected);
-
-  const overrides: DecideEmailReason["overrides"] = [];
-
-  if (!isProtected) return { action, archiveAt, overrides };
-
-  // Protected categories can still be labeled/digested,
-  // but cannot be auto-archived or moved to spam.
-  if (action === "MOVE_TO_SPAM" || action === "ARCHIVE_AFTER_48H" || action === "ARCHIVE_AFTER_N_DAYS") {
-    overrides.push({
-      type: "PROTECTED_CATEGORY_BLOCK",
-      blockedAction: action,
-      reason: `Category "${meta?.name ?? categoryId}" is protected; blocking ${action}.`,
-    });
-    return { action: "LABEL_ONLY", archiveAt: null, overrides };
+  if (a === "archive_after_48h") {
+    return { action: "ARCHIVE_AT", archiveAt: addDays(now, 2).toISOString() };
   }
 
-  return { action, archiveAt, overrides };
-}
+  if (a === "archive_after_days" || a === "archive_after_n_days") {
+    const n = policy.archiveAfterDays;
+    if (typeof n !== "number" || !Number.isFinite(n) || n <= 0) {
+      return {
+        action: "NONE",
+        archiveAt: null,
+        overrideReason: `Policy requested ${a} but archiveAfterDays was missing/invalid.`,
+      };
+    }
+    return { action: "ARCHIVE_AT", archiveAt: addDays(now, n).toISOString() };
+  }
 
-/**
- * Pure deterministic selection.
- * Precedence: PersonRule → DomainRule → LLM → Default("Other") → null
- */
-export function decideEmail(email: EmailEventInput, ctx: DecideEmailContext): DecideEmailResult {
-  const candidates = {
-    personRuleCategoryId: ctx.personRuleCategoryId ?? null,
-    domainRuleCategoryId: ctx.domainRuleCategoryId ?? null,
-    llmCategoryId: ctx.llmCategoryId ?? null,
-    defaultCategoryId: ctx.defaultCategoryId ?? null,
+  // Unknown policy strings are treated conservatively.
+  return {
+    action: "NONE",
+    archiveAt: null,
+    overrideReason: `Unknown policy action: ${policy.action}`,
   };
+}
 
-  const pick =
-    candidates.personRuleCategoryId ||
-    candidates.domainRuleCategoryId ||
-    candidates.llmCategoryId ||
-    candidates.defaultCategoryId ||
-    null;
+export function decideEmail(
+  emailEvent: MinimalEmailEvent,
+  ctx: {
+    personRules: MinimalPersonRule[];
+    orgRules: MinimalOrgRule[];
+    categoriesById: Record<string, MinimalCategory>;
+    categoryPoliciesById: Record<string, MinimalCategoryPolicy | undefined>;
+    now: Date;
+    llmEnabled: boolean;
+  }
+): DecisionResult {
+  const overrides: DecisionResult["reason"]["overrides"] = [];
+  const candidates: DecisionResult["reason"]["candidates"] = [];
 
-  const winner: DecideEmailReason["winner"] =
-    candidates.personRuleCategoryId
-      ? "PERSON_RULE"
-      : candidates.domainRuleCategoryId
-        ? "DOMAIN_RULE"
-        : candidates.llmCategoryId
-          ? "LLM"
-          : candidates.defaultCategoryId
-            ? "DEFAULT"
-            : "NONE";
+  const fromEmail = extractEmailAddress(emailEvent.from_);
+  const domainFromEvent = (emailEvent.senderDomain ?? "").trim().toLowerCase();
+  const domain = domainFromEvent ? domainFromEvent : extractDomain(emailEvent.from_);
 
-  if (!pick) {
-    return {
-      finalCategoryId: null,
-      action: "NONE",
-      archiveAt: null,
-      reason: {
-        winner,
-        chosenCategoryId: null,
-        chosenCategoryName: null,
-        candidates,
-        overrides: [],
-      },
-    };
+  const personMatch =
+    fromEmail != null
+      ? ctx.personRules.find((r) => r.email.toLowerCase() === fromEmail)
+      : undefined;
+  const domainMatch =
+    domain != null
+      ? ctx.orgRules.find((r) => r.domain.toLowerCase() === domain)
+      : undefined;
+
+  const llmCandidateCategoryId =
+    ctx.llmEnabled &&
+    isExplainJsonFromLlm(emailEvent.explainJson) &&
+    typeof emailEvent.classificationCategoryId === "string" &&
+    emailEvent.classificationCategoryId.length > 0
+      ? emailEvent.classificationCategoryId
+      : null;
+
+  if (personMatch) {
+    candidates.push({ source: "personRule", categoryId: personMatch.categoryId, confidence: 1 });
+  }
+  if (domainMatch) {
+    candidates.push({ source: "domainRule", categoryId: domainMatch.categoryId, confidence: 1 });
+  }
+  if (llmCandidateCategoryId) {
+    const conf = emailEvent.confidence ?? undefined;
+    candidates.push({
+      source: "llm",
+      categoryId: llmCandidateCategoryId,
+      ...(typeof conf === "number" ? { confidence: conf } : {}),
+    });
   }
 
-  const { action, archiveAt } = computeActionAndArchiveAt(email, ctx, pick);
-  const protectedResult = applyProtectedOverrides(ctx, pick, action, archiveAt);
+  // Determine category winner in strict precedence.
+  let winner: DecisionResult["reason"]["winner"] = "default";
+  let finalCategoryId: string | null = null;
+
+  const personCategoryId = personMatch?.categoryId ?? null;
+  const domainCategoryId = domainMatch?.categoryId ?? null;
+
+  const isValidCategoryId = (id: string | null): id is string =>
+    !!id && typeof id === "string" && !!ctx.categoriesById[id];
+
+  if (isValidCategoryId(personCategoryId)) {
+    winner = "personRule";
+    finalCategoryId = personCategoryId;
+    if (domainMatch) {
+      overrides.push({
+        overriddenSource: "domainRule",
+        reason: "PersonRule takes precedence over OrgRule.",
+      });
+    }
+    if (llmCandidateCategoryId) {
+      overrides.push({
+        overriddenSource: "llm",
+        reason: "PersonRule takes precedence over LLM classification.",
+      });
+    }
+  } else if (isValidCategoryId(domainCategoryId)) {
+    winner = "domainRule";
+    finalCategoryId = domainCategoryId;
+    if (llmCandidateCategoryId) {
+      overrides.push({
+        overriddenSource: "llm",
+        reason: "OrgRule (domain) takes precedence over LLM classification.",
+      });
+    }
+  } else if (isValidCategoryId(llmCandidateCategoryId)) {
+    winner = "llm";
+    finalCategoryId = llmCandidateCategoryId;
+  } else {
+    const otherId = findDefaultOtherCategoryId(ctx.categoriesById);
+    if (isValidCategoryId(otherId)) {
+      candidates.push({ source: "default", categoryId: otherId });
+      winner = "default";
+      finalCategoryId = otherId;
+    } else {
+      winner = "default";
+      finalCategoryId = null;
+    }
+  }
+
+  // Action selection based on final category policy.
+  const policy = finalCategoryId ? ctx.categoryPoliciesById[finalCategoryId] : undefined;
+  const base = policyToDecision(policy, ctx.now);
+  let action = base.action;
+  let archiveAt = base.archiveAt;
+  if (base.overrideReason) {
+    overrides.push({ overriddenSource: "policy", reason: base.overrideReason });
+  }
+
+  // Protected categories cannot be auto-archived or moved to spam.
+  if (finalCategoryId) {
+    const cat = ctx.categoriesById[finalCategoryId];
+    const protectedFromAutoArchive = !!cat?.protectedFromAutoArchive;
+    if (protectedFromAutoArchive && (action === "ARCHIVE_AT" || action === "SPAM")) {
+      const downgraded: DecisionAction =
+        normalizePolicyAction(policy?.action ?? "") === "label_only" ? "LABEL_ONLY" : "DIGEST";
+      overrides.push({
+        overriddenSource: "protectedCategory",
+        reason: `Category is protected from auto-archive/spam; downgraded action to ${downgraded}.`,
+      });
+      action = downgraded;
+      archiveAt = null;
+    }
+  }
 
   return {
-    finalCategoryId: pick,
-    action: protectedResult.action,
-    archiveAt: protectedResult.archiveAt,
+    emailEventId: emailEvent.id,
+    googleAccountId: emailEvent.googleAccountId,
+    finalCategoryId,
+    action,
+    archiveAt,
     reason: {
       winner,
-      chosenCategoryId: pick,
-      chosenCategoryName: categoryName(ctx, pick),
       candidates,
-      overrides: protectedResult.overrides,
+      overrides,
     },
   };
 }
+
