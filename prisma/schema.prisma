@@ -68,6 +68,39 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+enum WaitlistStatus {
+  pending
+  approved
+}
+
+model WaitlistEntry {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  status         WaitlistStatus @default(pending)
+  source         String?
+  lastNotifiedAt DateTime?
+  attemptsCount  Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([email])
+  @@index([createdAt])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String?
+  provider  String?
+  ip        String?
+  userAgent String?
+  allowed   Boolean
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}
+
 // --- ChiefOS models ---
 model GoogleAccount {
   id                    String   @id @default(cuid())

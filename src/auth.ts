@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Google from "next-auth/providers/google";
 import type { Provider } from "next-auth/providers";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendMagicLink } from "@/lib/email";
 
@@ -70,21 +71,60 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) session.user.id = token.id as string;
       return session;
     },
-    async signIn({ user }) {
-      const allowed = (process.env.DOGFOOD_ALLOWED_EMAILS ?? "")
+    async signIn({ user, account }) {
+      const email = (user?.email ?? "").trim().toLowerCase();
+      const provider = account?.provider ?? null;
+
+      let ip: string | null = null;
+      let userAgent: string | null = null;
+      try {
+        const h = await headers();
+        const xff = h.get("x-forwarded-for");
+        ip =
+          (xff ? xff.split(",")[0]?.trim() : null) ??
+          h.get("x-real-ip") ??
+          h.get("cf-connecting-ip");
+        userAgent = h.get("user-agent");
+      } catch {
+        // best-effort only
+      }
+
+      const allowedList = (process.env.DOGFOOD_ALLOWED_EMAILS ?? "")
         .split(",")
         .map((s) => s.trim().toLowerCase())
         .filter(Boolean);
-    
-      // If allowlist is set, enforce it.
-      if (allowed.length > 0) {
-        const email = (user?.email ?? "").toLowerCase();
-        if (!email || !allowed.includes(email)) return false;
+
+      const allowlistEnabled = allowedList.length > 0;
+      const isAllowed = !allowlistEnabled || (!!email && allowedList.includes(email));
+      const reason = !isAllowed ? "not_in_allowlist" : null;
+
+      // Always record the attempt (allowed or blocked). Best-effort; never block sign-in on logging failure.
+      try {
+        const p = prisma as unknown as {
+          loginAttempt: { create: (args: unknown) => Promise<unknown> };
+        };
+        await p.loginAttempt.create({
+          data: {
+            email: email || null,
+            provider,
+            ip,
+            userAgent,
+            allowed: isAllowed,
+            reason,
+          },
+        });
+      } catch {
+        // ignore
       }
-    
+
+      if (!isAllowed) {
+        // Redirect blocked users to waitlist without revealing allowlist details.
+        return `/waitlist${email ? `?email=${encodeURIComponent(email)}` : ""}`;
+      }
+
       return true;
     },
-    },
+  },
 
   events: {
     async linkAccount({ user, account, profile }) {

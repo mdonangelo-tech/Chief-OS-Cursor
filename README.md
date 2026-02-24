@@ -162,6 +162,10 @@ Set `PRIVATE_MODE=true` plus `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` in Vercel
   - `https://chief-os.ai/brief`
   - `https://api.chief-os.ai/health`
 
+## Dogfood allowlist + waitlist
+
+If `DOGFOOD_ALLOWED_EMAILS` is set (comma-separated), sign-in attempts for emails not on the allowlist are **blocked** and redirected to `/waitlist`. Blocked attempts are logged to `LoginAttempt`, and waitlist submissions create/update `WaitlistEntry` and send a confirmation email (console provider logs in dev).
+
 ## Stack
 
 - Next.js 15 (App Router), TypeScript, Tailwind
