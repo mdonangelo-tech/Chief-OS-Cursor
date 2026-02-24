@@ -174,6 +174,11 @@ export default async function DeclutterPage({
           </Link>
           .
         </p>
+        <p className="text-zinc-500 text-sm mt-2">
+          <Link href="/settings/declutter/preview" className="text-amber-500 hover:underline">
+            Preview decisions →
+          </Link>
+        </p>
       </div>
 
       <section className="space-y-4">
