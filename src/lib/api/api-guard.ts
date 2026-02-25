@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 const ALLOWED_ORIGINS = new Set([
   "https://chief-os.ai",
   "https://www.chief-os.ai",
+  "https://api.chief-os.ai",
+  ...(process.env.NODE_ENV === "development"
+    ? ["http://localhost:3000", "http://127.0.0.1:3000"]
+    : []),
 ]);
 
 type RateLimitState = { resetAtMs: number; count: number };

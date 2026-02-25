@@ -30,6 +30,11 @@ model User {
   declutterPref         UserDeclutterPref?
   categoryDeclutterRules CategoryDeclutterRule[]
   rejectedSuggestions   RejectedSuggestion[]
+
+  onboardingRuns         OnboardingRun[]
+  userGoals              UserGoal[]
+  accountPreferences     UserAccountPreference[]
+  calendarPreferences    UserCalendarPreferences?
 }
 
 model Account {
@@ -73,6 +78,36 @@ enum WaitlistStatus {
   approved
 }
 
+enum OnboardingRunStatus {
+  queued
+  running
+  complete
+  failed
+}
+
+enum AccountType {
+  work
+  personal
+  unknown
+}
+
+enum SoloEventDefaultKind {
+  TASK
+  FOCUS
+  MEETING
+  UNKNOWN
+}
+
+enum HoldDefault {
+  HARD_BUSY
+  SOFT_HOLD
+}
+
+enum CalendarClassDefault {
+  BLOCK
+  FYI
+}
+
 model WaitlistEntry {
   id             String         @id @default(cuid())
   email          String         @unique
@@ -102,6 +137,74 @@ model LoginAttempt {
 }
 
 // --- ChiefOS models ---
+
+model OnboardingRun {
+  id              String             @id @default(cuid())
+  userId          String
+  status          OnboardingRunStatus @default(queued)
+  createdAt       DateTime           @default(now())
+  completedAt     DateTime?
+  accountIds      String[]           // googleAccount ids included in this run
+  inputsJson      Json?
+  resultsJson     Json?
+  questionsJson   Json?
+  undoSnapshotJson Json?
+  error           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model UserGoal {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  label     String
+  enabled   Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@unique([userId, key])
+}
+
+model UserAccountPreference {
+  id                 String    @id @default(cuid())
+  userId             String
+  googleAccountId    String
+  accountType        AccountType @default(unknown)
+  isPrimary          Boolean   @default(false)
+  includeInOnboarding Boolean  @default(true)
+  displayName        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleAccount GoogleAccount @relation(fields: [googleAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, googleAccountId])
+  @@index([userId])
+}
+
+model UserCalendarPreferences {
+  id                    String              @id @default(cuid())
+  userId                String              @unique
+  soloEventDefaultKind  SoloEventDefaultKind @default(UNKNOWN)
+  holdDefault           HoldDefault         @default(SOFT_HOLD)
+  classDefault          CalendarClassDefault @default(BLOCK)
+  delegateEmails        String[]
+  familyKeywordRules    String[]
+  workDomainAllowlist   String[]
+  updatedAt             DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model GoogleAccount {
   id                    String   @id @default(cuid())
   userId                String
@@ -118,6 +221,7 @@ model GoogleAccount {
   emailEvents    EmailEvent[]
   calendarEvents CalendarEvent[]
   auditLogs      AuditLog[]
+  accountPreferences UserAccountPreference[]
 
   @@unique([userId, email])
 }

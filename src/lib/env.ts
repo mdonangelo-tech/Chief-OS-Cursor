@@ -30,6 +30,10 @@ export function privateModeEnabled(): boolean {
   return normalizeBool(getEnv("PRIVATE_MODE"));
 }
 
+export function onboardingV1Enabled(): boolean {
+  return normalizeBool(getEnv("ONBOARDING_V1_ENABLED"));
+}
+
 export function getAuthUrl(): string {
   const v = getEnv("AUTH_URL");
   if (v) return v;
