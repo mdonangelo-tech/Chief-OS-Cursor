@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { onboardingV1Enabled } from "@/lib/env";
+import { SettingsOnboardingUndoClient } from "./undo-client";
 
 export default async function SettingsOnboardingPage() {
   if (!onboardingV1Enabled()) notFound();
@@ -52,6 +53,7 @@ export default async function SettingsOnboardingPage() {
         >
           Re-run analysis
         </Link>
+        {lastRun && <SettingsOnboardingUndoClient runId={lastRun.id} />}
         <Link href="/settings/accounts" className="text-sm text-zinc-400 hover:text-zinc-200">
           Add another account
         </Link>

@@ -9,6 +9,7 @@ import {
 } from "@/lib/llm/schemas";
 import { llmJsonArray } from "@/services/onboarding/llm";
 import { generateActiveLearningQuestions } from "@/services/onboarding/questions";
+import { stableActionId, type OnboardingRecommendation } from "@/services/onboarding/recommendations";
 
 type ProgressStep = "init" | "emails" | "calendar" | "finalize" | "done";
 
@@ -503,10 +504,64 @@ export async function tickOnboardingRun(args: {
         uncertainClusters,
       };
 
+      const recommendations: Prisma.InputJsonValue = JSON.parse(
+        JSON.stringify([] as OnboardingRecommendation[])
+      ) as Prisma.InputJsonValue;
+
+      // Calendar prefs recommendation (decisive default; user can override in Tune).
+      (recommendations as any[]).push({
+        actionId: stableActionId("CALENDAR_PREFS", {
+          soloEventDefaultKind: "TASK",
+          holdDefault: "SOFT_HOLD",
+          classDefault: "BLOCK",
+        }),
+        type: "CALENDAR_PREFS",
+        title: "Make solo events behave like tasks (by default)",
+        reason:
+          "Solo events often represent to-dos and focus blocks. Defaulting them to TASK keeps your meeting load honest while still protecting focus time when needed.",
+        previewKind: "describe",
+        payload: {
+          soloEventDefaultKind: "TASK",
+          holdDefault: "SOFT_HOLD",
+          classDefault: "BLOCK",
+        },
+      });
+
+      // Noise cleanup (Gmail label integration exists; we'll mark it as integrated in Apply).
+      (recommendations as any[]).push({
+        actionId: stableActionId("NOISE_LABEL", { labelName: "ChiefOS/Noise" }),
+        type: "NOISE_LABEL",
+        title: "Create a ChiefOS/Noise label for low-signal senders",
+        reason:
+          "A dedicated label lets you triage noise safely (no deletion) and makes automation reversible.",
+        previewKind: "none",
+        payload: { labelName: "ChiefOS/Noise" },
+      });
+
+      // Declutter: conservative suggestion based on top domains (if any) -> label_only (digest) by default.
+      // We'll only suggest if user has categories and a matching category name exists at apply time.
+      if (Array.isArray((resultsJson as any).emailStats?.topDomains)) {
+        const top = ((resultsJson as any).emailStats.topDomains as any[]).slice(0, 2);
+        for (const t of top) {
+          if (!t?.domain) continue;
+          (recommendations as any[]).push({
+            actionId: stableActionId("ORG_RULE", { domain: String(t.domain), categoryName: "Newsletters" }),
+            type: "ORG_RULE",
+            title: `Route ${String(t.domain)} to “Newsletters”`,
+            reason:
+              "High-volume domains are usually newsletters/notifications. Routing by domain keeps your inbox cleaner with minimal risk.",
+            previewKind: "count_emails",
+            payload: { domain: String(t.domain), categoryName: "Newsletters" },
+          });
+        }
+      }
+
       const next = setProgress(
         {
           ...resultsJson,
           calendarStats,
+          recommendations: recommendations as any,
+          appliedActionIds: (resultsJson as any).appliedActionIds ?? [],
         },
         {
           step: "finalize",

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { onboardingV1Enabled } from "@/lib/env";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { OnboardingRecommendationsClient } from "./recommendations-client";
 
 export default async function OnboardingInsightsPage() {
   if (!onboardingV1Enabled()) notFound();
@@ -27,6 +28,9 @@ export default async function OnboardingInsightsPage() {
 
   const emailStats = (run?.resultsJson as any)?.emailStats;
   const calendarStats = (run?.resultsJson as any)?.calendarStats;
+  const recommendations = Array.isArray((run?.resultsJson as any)?.recommendations)
+    ? ((run?.resultsJson as any).recommendations as unknown[])
+    : [];
   const topDomains = Array.isArray(emailStats?.topDomains) ? emailStats.topDomains : [];
   const unsub = Array.isArray(emailStats?.llm?.unsubscribeCandidates)
     ? emailStats.llm.unsubscribeCandidates
@@ -217,6 +221,14 @@ export default async function OnboardingInsightsPage() {
             >
               Go to Morning Brief
             </Link>
+          </div>
+
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 space-y-3">
+            <h2 className="text-lg font-medium">Recommended actions</h2>
+            <p className="text-sm text-zinc-400">
+              Apply is reversible and recorded to this run’s undo snapshot.
+            </p>
+            <OnboardingRecommendationsClient runId={run.id} initialRecommendations={recommendations} />
           </div>
         </>
       )}
