@@ -17,6 +17,12 @@ function prismaArgs(subcommandArgs) {
 
 const isVercel = process.env.VERCEL === "1";
 
+// Prisma validates env("DIRECT_URL") at build time if present in schema.
+// Default it to DATABASE_URL so deploys don't fail if DIRECT_URL isn't set.
+if (!process.env.DIRECT_URL) {
+  process.env.DIRECT_URL = process.env.DATABASE_URL;
+}
+
 if (isVercel) {
   run(prismaBin(), prismaArgs(["migrate", "deploy"]));
 }
