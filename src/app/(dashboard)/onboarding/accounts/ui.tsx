@@ -17,7 +17,15 @@ type Item = {
   displayName: string | null;
 };
 
-export function OnboardingAccountsClient({ items }: { items: Item[] }) {
+export function OnboardingAccountsClient({
+  items,
+  dbWarning,
+  readOnly,
+}: {
+  items: Item[];
+  dbWarning: string | null;
+  readOnly: boolean;
+}) {
   const [rows, setRows] = useState<Item[]>(items);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(
@@ -35,6 +43,10 @@ export function OnboardingAccountsClient({ items }: { items: Item[] }) {
   }
 
   async function save(googleAccountId: string, patch: Partial<Item>) {
+    if (readOnly) {
+      showToast("error", "Onboarding preferences are read-only until DB migrations are applied.");
+      return;
+    }
     setSavingId(googleAccountId);
     try {
       const current = rows.find((r) => r.googleAccountId === googleAccountId);
@@ -73,6 +85,17 @@ export function OnboardingAccountsClient({ items }: { items: Item[] }) {
           Include all accounts by default. You can re-run onboarding later after adding more.
         </p>
       </div>
+
+      {dbWarning && (
+        <div className="rounded-xl border border-amber-800 bg-amber-950/20 p-4 text-sm text-amber-200">
+          <div className="font-medium">Setup required</div>
+          <div className="text-amber-200/80 mt-1">{dbWarning}</div>
+          <div className="text-xs text-amber-200/70 mt-2">
+            This page will stop erroring once the production DB migrations run (Vercel build now runs
+            `prisma migrate deploy`).
+          </div>
+        </div>
+      )}
 
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 text-sm text-zinc-400">
         Included in this scan: <strong className="text-zinc-200">{includedCount}</strong> /{" "}

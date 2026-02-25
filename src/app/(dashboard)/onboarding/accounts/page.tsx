@@ -12,13 +12,23 @@ export default async function OnboardingAccountsPage() {
   if (!session?.user?.id) return null;
   const userId = session.user.id;
 
-  const [accounts, prefs] = await Promise.all([
-    prisma.googleAccount.findMany({
-      where: { userId },
-      select: { id: true, email: true, userDefinedLabel: true, createdAt: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.userAccountPreference.findMany({
+  const accounts = await prisma.googleAccount.findMany({
+    where: { userId },
+    select: { id: true, email: true, userDefinedLabel: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  let prefs: Array<{
+    googleAccountId: string;
+    accountType: "work" | "personal" | "unknown";
+    isPrimary: boolean;
+    includeInOnboarding: boolean;
+    displayName: string | null;
+  }> = [];
+  let dbWarning: string | null = null;
+
+  try {
+    prefs = await prisma.userAccountPreference.findMany({
       where: { userId },
       select: {
         googleAccountId: true,
@@ -27,8 +37,12 @@ export default async function OnboardingAccountsPage() {
         includeInOnboarding: true,
         displayName: true,
       },
-    }),
-  ]);
+    });
+  } catch (e) {
+    dbWarning =
+      "Onboarding tables are not available yet. This usually means production database migrations haven’t been applied.";
+    // Continue with defaults so the page doesn't hard-fail.
+  }
 
   const prefById = new Map(prefs.map((p) => [p.googleAccountId, p]));
 
@@ -46,6 +60,6 @@ export default async function OnboardingAccountsPage() {
     };
   });
 
-  return <OnboardingAccountsClient items={items} />;
+  return <OnboardingAccountsClient items={items} dbWarning={dbWarning} readOnly={!!dbWarning} />;
 }
 
