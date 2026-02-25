@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "@/auth";
+import { onboardingV1Enabled } from "@/lib/env";
 
 export default async function DashboardLayout({
   children,
@@ -40,9 +41,11 @@ export default async function DashboardLayout({
             <Link href="/settings/accounts" className="text-zinc-400 hover:text-zinc-200 transition-colors">
               Accounts
             </Link>
-            <Link href="/onboarding" className="text-zinc-400 hover:text-zinc-200 transition-colors">
-              Onboarding
-            </Link>
+            {onboardingV1Enabled() && (
+              <Link href="/onboarding" className="text-zinc-400 hover:text-zinc-200 transition-colors">
+                Onboarding
+              </Link>
+            )}
           </div>
           <div className="flex items-center gap-4 shrink-0">
             <span className="text-sm text-zinc-500">
