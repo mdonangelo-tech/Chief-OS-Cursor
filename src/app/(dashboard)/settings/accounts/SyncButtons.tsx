@@ -9,9 +9,8 @@ export function SyncButtons() {
 
   async function handleSync() {
     setSyncing("all");
-    router.replace("/settings/accounts");
     try {
-      const res = await fetch(`/api/sync/all`, { method: "POST" });
+      const res = await fetch(`/api/sync/all`, { method: "POST", keepalive: true });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? `Sync failed (${res.status})`);
