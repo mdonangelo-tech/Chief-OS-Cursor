@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decideEmail } from "@/lib/decision-engine";
 import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
+import { fetchMessageMetadata } from "@/services/gmail/client";
 import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import type { PreviewAgeArchiveResponse } from "@/types/declutter";
 import { withApiGuard } from "@/lib/api/api-guard";
@@ -13,6 +14,7 @@ const MAX_SCAN = 50_000;
 type ScanRow = {
   id: string;
   googleAccountId: string;
+  messageId: string;
   date: Date;
   from_: string;
   senderDomain: string | null;
@@ -67,6 +69,60 @@ async function getImpl(req: NextRequest) {
   const ctx = await buildDeclutterDecisionCtx(userId, now);
   const categoriesById = ctx.categoriesById;
 
+  // Best-effort freshness pass:
+  // The preview is driven by EmailEvent.labels containing "INBOX". If the user archived mail in Gmail,
+  // older rows may stay stale because the regular sync focuses on a rolling recent window.
+  // Reconcile a capped number of "older_than" candidates before counting so this preview reflects Gmail.
+  const RECONCILE_PER_ACCOUNT = 120;
+  let reconcileAttempted = 0;
+  let reconcileUpdated = 0;
+  for (const accId of accountIds) {
+    const toReconcile = await prisma.emailEvent.findMany({
+      where: {
+        googleAccountId: accId,
+        labels: { has: "INBOX" },
+        date: { lte: cutoff },
+      },
+      select: { messageId: true },
+      orderBy: { syncAt: "asc" },
+      take: RECONCILE_PER_ACCOUNT,
+    });
+    for (const r of toReconcile) {
+      reconcileAttempted++;
+      try {
+        const meta = await fetchMessageMetadata(accId, userId, r.messageId);
+        if (!meta) {
+          // Message no longer exists in Gmail; remove INBOX in DB so it doesn't appear as eligible.
+          await prisma.emailEvent.update({
+            where: { messageId: r.messageId },
+            data: { labels: { set: [] }, unread: false, syncAt: new Date() },
+          });
+          reconcileUpdated++;
+          continue;
+        }
+        await prisma.emailEvent.update({
+          where: { messageId: r.messageId },
+          data: {
+            threadId: meta.threadId,
+            from_: meta.from,
+            to: meta.to,
+            cc: meta.cc,
+            subject: meta.subject,
+            snippet: meta.snippet,
+            date: meta.date,
+            labels: meta.labels,
+            unread: meta.unread,
+            senderDomain: meta.senderDomain,
+            syncAt: new Date(),
+          },
+        });
+        reconcileUpdated++;
+      } catch {
+        // ignore per-message reconciliation errors
+      }
+    }
+  }
+
   let excludedProtectedCount = 0;
   const byCategoryCounts = new Map<string | null, number>();
   let oldestDate: string | null = null;
@@ -85,6 +141,7 @@ async function getImpl(req: NextRequest) {
       select: {
         id: true,
         googleAccountId: true,
+        messageId: true,
         date: true,
         from_: true,
         senderDomain: true,
@@ -174,8 +231,7 @@ async function getImpl(req: NextRequest) {
           authErrorCode: typeof authError?.code === "string" ? (authError.code as string) : null,
         };
       }),
-      note:
-        "If this preview is stale, it usually means EmailEvent.labels still includes INBOX for messages already archived/moved in Gmail. Sync reconciles that label state.",
+      note: `Freshness pass attempted ${reconcileAttempted} message(s), updated ${reconcileUpdated}. If totals still look stale, refresh again to reconcile more of the oldest eligible rows.`,
     },
   };
   return NextResponse.json(res);
