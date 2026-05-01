@@ -4,6 +4,25 @@ import { asDbErrorInfo } from "@/lib/db-errors";
 import Link from "next/link";
 import { SyncButtons } from "./SyncButtons";
 
+type AccountSyncState = {
+  lastSyncAt?: string;
+  authError?: { code?: string; message?: string } | null;
+  lastSyncResult?: { errors?: string[] } | null;
+  lastCalendarSyncResult?: { errors?: string[] } | null;
+} | null;
+
+function topErrors(errors: unknown, max = 2): string[] {
+  if (!Array.isArray(errors)) return [];
+  const out: string[] = [];
+  for (const e of errors) {
+    const s = typeof e === "string" ? e : "";
+    if (!s) continue;
+    if (!out.includes(s)) out.push(s);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 export default async function AccountsPage({
   searchParams,
 }: {
@@ -77,43 +96,62 @@ export default async function AccountsPage({
         {googleAccounts.length > 0 && (
           <ul className="space-y-2">
             {googleAccounts.map((acc) => {
-              const syncState = acc.syncStateJson as
-                | { lastSyncAt?: string; authError?: { code?: string; message?: string } | null }
-                | null;
+              const syncState = acc.syncStateJson as AccountSyncState;
               const needsReconnect = syncState?.authError?.code === "RECONNECT_REQUIRED";
+              const gmailErrs = topErrors(syncState?.lastSyncResult?.errors, 2);
+              const calErrs = topErrors(syncState?.lastCalendarSyncResult?.errors, 2);
+              const hasSomeErrors = gmailErrs.length > 0 || calErrs.length > 0;
               return (
                 <li
                   key={acc.id}
-                  className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3"
+                  className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3"
                 >
-                  <div>
-                    <span className="font-medium">{acc.email}</span>
-                    {acc.userDefinedLabel && (
-                      <span className="ml-2 text-zinc-500 text-sm">
-                        ({acc.userDefinedLabel})
-                      </span>
-                    )}
-                    {syncState?.lastSyncAt && (
-                      <span className="ml-2 text-zinc-600 text-xs">
-                        last sync {new Date(syncState.lastSyncAt).toLocaleString()}
-                      </span>
-                    )}
-                    {needsReconnect && (
-                      <span className="ml-2 text-red-400 text-xs">
-                        reconnect required
-                      </span>
-                    )}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="font-medium">{acc.email}</span>
+                      {acc.userDefinedLabel && (
+                        <span className="ml-2 text-zinc-500 text-sm">
+                          ({acc.userDefinedLabel})
+                        </span>
+                      )}
+                      {syncState?.lastSyncAt && (
+                        <span className="ml-2 text-zinc-600 text-xs">
+                          last sync {new Date(syncState.lastSyncAt).toLocaleString()}
+                        </span>
+                      )}
+                      {needsReconnect && (
+                        <span className="ml-2 text-red-400 text-xs">
+                          reconnect required
+                        </span>
+                      )}
+                      {params.sync === "warn" && hasSomeErrors && (
+                        <div className="mt-2 text-xs text-amber-200 space-y-1">
+                          {gmailErrs.length > 0 && (
+                            <div>
+                              <span className="text-amber-300">Gmail:</span>{" "}
+                              {gmailErrs.join(" · ")}
+                            </div>
+                          )}
+                          {calErrs.length > 0 && (
+                            <div>
+                              <span className="text-amber-300">Calendar:</span>{" "}
+                              {calErrs.join(" · ")}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <a
+                      href="/api/connect-google?returnTo=/settings/accounts"
+                      className={
+                        needsReconnect
+                          ? "text-sm text-amber-400 hover:text-amber-300"
+                          : "text-sm text-zinc-500 hover:text-zinc-300"
+                      }
+                    >
+                      Reconnect
+                    </a>
                   </div>
-                  <a
-                    href="/api/connect-google?returnTo=/settings/accounts"
-                    className={
-                      needsReconnect
-                        ? "text-sm text-amber-400 hover:text-amber-300"
-                        : "text-sm text-zinc-500 hover:text-zinc-300"
-                    }
-                  >
-                    Reconnect
-                  </a>
                 </li>
               );
             })}
