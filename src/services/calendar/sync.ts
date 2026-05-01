@@ -53,59 +53,90 @@ export async function syncCalendarForAccount(
       ? new Date(syncState.lastCalendarCursorAt as string)
       : undefined;
 
-    for await (const events of listCalendarEvents(
-      accountId,
-      userId,
-      timeMin,
-      timeMax,
-      250,
-      lastCalendarCursorAt
-    )) {
-      for (const ev of events) {
-        try {
-          result.fetched++;
+    function isUpdatedMinTooLongAgo(err: unknown): boolean {
+      const msg =
+        typeof (err as { message?: unknown })?.message === "string"
+          ? ((err as { message: string }).message as string)
+          : String(err);
+      const m = msg.toLowerCase();
+      return m.includes("calendar api error: 410") && m.includes("updatedmintoolongago");
+    }
 
-          const data = {
-            googleAccountId: accountId,
-            eventId: ev.eventId,
-            title: ev.title,
-            startAt: ev.startAt,
-            endAt: ev.endAt,
-            durationMinutes: ev.durationMinutes,
-            attendees: ev.attendees,
-            organizer: ev.organizer,
-            location: ev.location,
-            recurrence: ev.recurrence,
-            syncAt: new Date(),
-          };
+    async function run(updatedMin?: Date) {
+      for await (const events of listCalendarEvents(
+        accountId,
+        userId,
+        timeMin,
+        timeMax,
+        250,
+        updatedMin
+      )) {
+        for (const ev of events) {
+          try {
+            result.fetched++;
 
-          const existing = await prisma.calendarEvent.findUnique({
-            where: {
-              googleAccountId_eventId: {
-                googleAccountId: accountId,
-                eventId: ev.eventId,
-              },
-            },
-          });
+            const data = {
+              googleAccountId: accountId,
+              eventId: ev.eventId,
+              title: ev.title,
+              startAt: ev.startAt,
+              endAt: ev.endAt,
+              durationMinutes: ev.durationMinutes,
+              attendees: ev.attendees,
+              organizer: ev.organizer,
+              location: ev.location,
+              recurrence: ev.recurrence,
+              syncAt: new Date(),
+            };
 
-          if (existing) {
-            await prisma.calendarEvent.update({
+            const existing = await prisma.calendarEvent.findUnique({
               where: {
                 googleAccountId_eventId: {
                   googleAccountId: accountId,
                   eventId: ev.eventId,
                 },
               },
-              data,
             });
-            result.updated++;
-          } else {
-            await prisma.calendarEvent.create({ data });
-            result.created++;
+
+            if (existing) {
+              await prisma.calendarEvent.update({
+                where: {
+                  googleAccountId_eventId: {
+                    googleAccountId: accountId,
+                    eventId: ev.eventId,
+                  },
+                },
+                data,
+              });
+              result.updated++;
+            } else {
+              await prisma.calendarEvent.create({ data });
+              result.created++;
+            }
+          } catch (err) {
+            result.errors.push(`${ev.eventId}: ${(err as Error).message}`);
           }
-        } catch (err) {
-          result.errors.push(`${ev.eventId}: ${(err as Error).message}`);
         }
+      }
+    }
+
+    try {
+      await run(lastCalendarCursorAt);
+    } catch (err) {
+      // If the incremental cursor is too old, fall back to a full window sync.
+      // This prevents the user from getting stuck with perpetual 410 errors after long gaps.
+      if (isUpdatedMinTooLongAgo(err)) {
+        console.info(
+          JSON.stringify({
+            type: "calendar_sync_cursor_reset",
+            accountId,
+            userId,
+            reason: "updatedMinTooLongAgo",
+          })
+        );
+        await run(undefined);
+      } else {
+        throw err;
       }
     }
   } catch (err) {
