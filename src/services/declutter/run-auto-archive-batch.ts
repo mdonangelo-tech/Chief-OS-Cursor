@@ -12,6 +12,7 @@ const MAX_SCAN = 50_000;
 type ScanRow = {
   id: string;
   googleAccountId: string;
+  threadId: string;
   date: Date;
   from_: string;
   senderDomain: string | null;
@@ -88,6 +89,7 @@ export async function runAutoArchiveBatch(
     select: {
       id: true,
       googleAccountId: true,
+      threadId: true,
       messageId: true,
       date: true,
       labels: true,
@@ -100,6 +102,22 @@ export async function runAutoArchiveBatch(
     orderBy: { date: "asc" },
     take: 2000,
   });
+
+  const threadIds = Array.from(new Set(candidates.map((c) => c.threadId)));
+  const threadMaxRows = await prisma.emailEvent.groupBy({
+    by: ["googleAccountId", "threadId"],
+    where: {
+      googleAccountId: { in: accountIds },
+      threadId: { in: threadIds },
+      labels: { has: "INBOX" },
+      NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
+    },
+    _max: { date: true },
+  });
+  const threadMaxByKey = new Map<string, Date>();
+  for (const r of threadMaxRows) {
+    if (r._max.date) threadMaxByKey.set(`${r.googleAccountId}:${r.threadId}`, r._max.date);
+  }
 
   function decisionConfidence(decision: ReturnType<typeof decideEmail>): number | undefined {
     const winner = decision.reason.winner;
@@ -116,11 +134,13 @@ export async function runAutoArchiveBatch(
     decision: ReturnType<typeof decideEmail>;
   }> = [];
   for (const e of candidates) {
+    const effectiveDate =
+      threadMaxByKey.get(`${e.googleAccountId}:${e.threadId}`) ?? e.date;
     const decision = decideEmail(
       {
         id: e.id,
         googleAccountId: e.googleAccountId,
-        date: e.date,
+        date: effectiveDate,
         from_: e.from_,
         senderDomain: e.senderDomain,
         classificationCategoryId: e.classificationCategoryId,
@@ -209,6 +229,7 @@ export async function runAutoArchiveBatch(
       select: {
         id: true,
         googleAccountId: true,
+        threadId: true,
         date: true,
         from_: true,
         senderDomain: true,
@@ -223,13 +244,31 @@ export async function runAutoArchiveBatch(
     if (page.length === 0) break;
     cursorId = page[page.length - 1].id;
 
+    const pageThreadIds = Array.from(new Set(page.map((p) => p.threadId)));
+    const pageThreadMaxRows = await prisma.emailEvent.groupBy({
+      by: ["googleAccountId", "threadId"],
+      where: {
+        googleAccountId: { in: accountIds },
+        threadId: { in: pageThreadIds },
+        labels: { has: "INBOX" },
+        NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
+      },
+      _max: { date: true },
+    });
+    const pageThreadMaxByKey = new Map<string, Date>();
+    for (const r of pageThreadMaxRows) {
+      if (r._max.date) pageThreadMaxByKey.set(`${r.googleAccountId}:${r.threadId}`, r._max.date);
+    }
+
     for (const e of page) {
       scanned++;
+      const effectiveDate =
+        pageThreadMaxByKey.get(`${e.googleAccountId}:${e.threadId}`) ?? e.date;
       const decision = decideEmail(
         {
           id: e.id,
           googleAccountId: e.googleAccountId,
-          date: e.date,
+          date: effectiveDate,
           from_: e.from_,
           senderDomain: e.senderDomain,
           classificationCategoryId: e.classificationCategoryId,

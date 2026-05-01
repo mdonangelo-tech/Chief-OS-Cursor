@@ -15,6 +15,7 @@ type ScanRow = {
   id: string;
   googleAccountId: string;
   messageId: string;
+  threadId: string;
   date: Date;
   from_: string;
   senderDomain: string | null;
@@ -142,6 +143,7 @@ async function getImpl(req: NextRequest) {
         id: true,
         googleAccountId: true,
         messageId: true,
+        threadId: true,
         date: true,
         from_: true,
         senderDomain: true,
@@ -156,8 +158,30 @@ async function getImpl(req: NextRequest) {
     if (page.length === 0) break;
     cursorId = page[page.length - 1].id;
 
+    // Thread-aware age check:
+    // only consider a message eligible if the most recent INBOX message in its thread
+    // is also older than the cutoff.
+    const threadKeys = new Set(page.map((p) => `${p.googleAccountId}:${p.threadId}`));
+    const threadIds = Array.from(new Set(page.map((p) => p.threadId)));
+    const threadMaxRows = await prisma.emailEvent.groupBy({
+      by: ["googleAccountId", "threadId"],
+      where: {
+        googleAccountId: { in: accountIds },
+        threadId: { in: threadIds },
+        labels: { has: "INBOX" },
+        NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
+      },
+      _max: { date: true },
+    });
+    const threadMaxByKey = new Map<string, Date>();
+    for (const r of threadMaxRows) {
+      if (r._max.date) threadMaxByKey.set(`${r.googleAccountId}:${r.threadId}`, r._max.date);
+    }
+
     for (const e of page) {
       scanned++;
+      const threadMax = threadMaxByKey.get(`${e.googleAccountId}:${e.threadId}`);
+      if (threadMax && threadMax.getTime() > cutoff.getTime()) continue;
       const decision = decideEmail(
         {
           id: e.id,

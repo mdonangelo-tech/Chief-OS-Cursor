@@ -124,7 +124,7 @@ export default async function AccountsPage({
                           reconnect required
                         </span>
                       )}
-                      {params.sync === "warn" && hasSomeErrors && (
+                      {hasSomeErrors && (
                         <div className="mt-2 text-xs text-amber-200 space-y-1">
                           {gmailErrs.length > 0 && (
                             <div>
