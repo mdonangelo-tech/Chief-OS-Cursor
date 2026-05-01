@@ -11,7 +11,13 @@ import {
   listMessageIds,
 } from "@/services/gmail/client";
 
-const DAYS_TO_SYNC = 90;
+// How far back we try to keep Inbox coverage in Postgres (bounded per run).
+// This directly affects long-range previews like "older_than:90d".
+const DAYS_TO_SYNC =
+  Math.max(
+    30,
+    Math.min(365, parseInt(process.env.GMAIL_SYNC_DAYS ?? "365", 10) || 365)
+  );
 const BATCH_SIZE = 50;
 /** Process this many messages in parallel to stay under Gmail rate limits */
 const PARALLEL_SIZE = 5;

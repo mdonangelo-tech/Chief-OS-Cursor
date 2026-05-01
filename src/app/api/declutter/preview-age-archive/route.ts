@@ -125,8 +125,8 @@ async function getImpl(req: NextRequest) {
 
   let excludedProtectedCount = 0;
   const byCategoryCounts = new Map<string | null, number>();
-  let oldestDate: string | null = null;
-  let newestDate: string | null = null;
+  let minDate: Date | null = null;
+  let maxDate: Date | null = null;
 
   let scanned = 0;
   let cursorId: string | null = null;
@@ -181,9 +181,8 @@ async function getImpl(req: NextRequest) {
 
       byCategoryCounts.set(catId, (byCategoryCounts.get(catId) ?? 0) + 1);
 
-      const iso = e.date.toISOString();
-      if (!oldestDate) oldestDate = iso;
-      newestDate = iso;
+      if (!minDate || e.date.getTime() < minDate.getTime()) minDate = e.date;
+      if (!maxDate || e.date.getTime() > maxDate.getTime()) maxDate = e.date;
       if (scanned >= MAX_SCAN) break;
     }
   }
@@ -202,8 +201,8 @@ async function getImpl(req: NextRequest) {
     ok: true,
     total,
     byCategory,
-    oldestDate,
-    newestDate,
+    oldestDate: minDate ? minDate.toISOString() : null,
+    newestDate: maxDate ? maxDate.toISOString() : null,
     excludedProtectedCount,
     debug: {
       generatedAt: new Date().toISOString(),
