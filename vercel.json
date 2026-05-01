@@ -25,6 +25,12 @@
       "has": [{ "type": "host", "value": "api.chief-os.ai" }],
       "destination": "/api/:path*"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/sync-and-run",
+      "schedule": "*/30 * * * *"
+    }
   ]
 }
 

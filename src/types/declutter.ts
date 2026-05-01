@@ -6,6 +6,21 @@ export type DeclutterCategoryBreakdownItem = {
   count: number;
 };
 
+export type DeclutterPreviewDebug = {
+  generatedAt: string;
+  scanned?: number;
+  accountCount: number;
+  accounts?: Array<{
+    id: string;
+    email?: string;
+    lastSyncAt?: string | null;
+    lastGmailAttemptAt?: string | null;
+    lastCalendarAttemptAt?: string | null;
+    authErrorCode?: string | null;
+  }>;
+  note?: string;
+};
+
 export type PreviewAutoArchiveResponse = {
   ok: true;
   total: number;
@@ -13,6 +28,7 @@ export type PreviewAutoArchiveResponse = {
   oldestDate: string | null;
   newestDate: string | null;
   protectedBlockedCount: number;
+  debug?: DeclutterPreviewDebug;
 };
 
 export type RunAutoArchiveResponse = {
@@ -28,6 +44,7 @@ export type PreviewAgeArchiveResponse = {
   oldestDate: string | null;
   newestDate: string | null;
   excludedProtectedCount: number;
+  debug?: DeclutterPreviewDebug & { days?: number; cutoff?: string };
 };
 
 export type DecisionCtxEmail = {

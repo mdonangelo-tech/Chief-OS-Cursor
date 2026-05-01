@@ -19,6 +19,8 @@ const PARALLEL_SIZE = 5;
 const BATCH_DELAY_MS = 50;
 /** Cap messages per sync run - click again to sync more */
 const MAX_MESSAGES_PER_RUN = 120;
+/** Also reconcile some older INBOX rows to keep long-range previews fresh */
+const STALE_INBOX_RECONCILE_MAX = 120;
 
 function afterDate(daysAgo: number): string {
   const d = new Date();
@@ -161,6 +163,27 @@ export async function syncGmailForAccount(
       take: 200,
     });
     for (const r of recentInbox) {
+      try {
+        await processMessage(r.messageId);
+      } catch {
+        // ignore per-message reconciliation errors
+      }
+    }
+
+    // Also reconcile a capped set of older INBOX rows (outside the rolling window).
+    // Without this, previews like "older than 30 days" can look stale forever because we
+    // only refresh label state for the last ~14 days.
+    const staleInbox = await prisma.emailEvent.findMany({
+      where: {
+        googleAccountId: accountId,
+        date: { lt: rollingWindowStart },
+        labels: { has: "INBOX" },
+      },
+      select: { messageId: true },
+      orderBy: { date: "asc" },
+      take: STALE_INBOX_RECONCILE_MAX,
+    });
+    for (const r of staleInbox) {
       try {
         await processMessage(r.messageId);
       } catch {

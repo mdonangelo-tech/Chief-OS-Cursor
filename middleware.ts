@@ -25,6 +25,11 @@ function basicAuthUnauthorized(): Response {
 function requireBasicAuth(req: NextRequest): Response | null {
   if (!privateModeEnabled()) return null;
 
+  // Cron routes are secured via CRON_SECRET (Bearer) and must be callable by Vercel Cron.
+  // Vercel Cron will not include Basic Auth credentials by default.
+  const pathname = new URL(req.url).pathname;
+  if (pathname.startsWith("/api/cron/")) return null;
+
   const expectedUser = process.env.BASIC_AUTH_USER ?? "";
   const expectedPass = process.env.BASIC_AUTH_PASSWORD ?? "";
   if (!expectedUser || !expectedPass) {

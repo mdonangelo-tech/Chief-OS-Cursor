@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { asDbErrorInfo } from "@/lib/db-errors";
 import Link from "next/link";
 import { SyncButtons } from "./SyncButtons";
 
@@ -12,10 +13,16 @@ export default async function AccountsPage({
   if (!session?.user?.id) return null;
 
   const params = await searchParams;
-  const googleAccounts = await prisma.googleAccount.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "asc" },
-  });
+  let googleAccounts: Awaited<ReturnType<typeof prisma.googleAccount.findMany>> = [];
+  let dbError: string | null = null;
+  try {
+    googleAccounts = await prisma.googleAccount.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "asc" },
+    });
+  } catch (e) {
+    dbError = asDbErrorInfo(e)?.message ?? (e as Error)?.message ?? "Database error";
+  }
 
   const hasGoogleConfig =
     !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
@@ -32,6 +39,11 @@ export default async function AccountsPage({
       {params.error && (
         <div className="rounded-lg bg-red-950/50 border border-red-800 px-4 py-3 text-red-300 text-sm">
           {params.error}
+        </div>
+      )}
+      {dbError && (
+        <div className="rounded-lg bg-red-950/50 border border-red-800 px-4 py-3 text-red-300 text-sm">
+          {dbError}
         </div>
       )}
       {params.success === "connected" && (

@@ -2,7 +2,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { addCategory, addCategoryFromGmail, upsertCategoryDeclutterRule, updateDeclutterAutoArchive } from "@/lib/setup-actions";
 import { ensureDeclutterRulesForCategories } from "@/lib/setup-defaults";
-import { GMAIL_CHIEFOS_ARCHIVED_URL, listUserLabels } from "@/services/gmail/labels";
+import { asDbErrorInfo } from "@/lib/db-errors";
+import { GMAIL_CHIEFOS_ARCHIVED_URL, listUserLabels, type GmailLabelInfo } from "@/services/gmail/labels";
 import { AutoArchiveRunner } from "./AutoArchiveRunner";
 import { ArchiveByDaysRunner } from "./ArchiveByDaysRunner";
 import { AutoArchiveToggle } from "./AutoArchiveToggle";
@@ -36,67 +37,119 @@ export default async function DeclutterPage({
 
   const params = await searchParams;
 
-  const accounts = await prisma.googleAccount.findMany({
-    where: { userId: session.user.id },
-    select: { id: true, email: true },
-  });
-  const accountIds = accounts.map((a) => a.id);
+  type GmailLabelsByAccountRow =
+    | { accountId: string; accountEmail: string; labels: GmailLabelInfo[] }
+    | { accountId: string; accountEmail: string; error: string };
 
-  const [declutterPref, categories, categoryRules, personRules, orgRules, suggestedEvents, rejected, gmailLabelsByAccount] = await Promise.all([
-    prisma.userDeclutterPref.findUnique({ where: { userId: session.user.id } }),
-    prisma.category.findMany({
+  let dbError: string | null = null;
+  let accounts: { id: string; email: string }[] = [];
+  let declutterPref: any = null;
+  let categories: any[] = [];
+  let categoryRules: any[] = [];
+  let personRules: any[] = [];
+  let orgRules: any[] = [];
+  let suggestedEvents: any[] = [];
+  let rejected: any[] = [];
+  let gmailLabelsByAccount: GmailLabelsByAccountRow[] | null = null;
+
+  try {
+    accounts = await prisma.googleAccount.findMany({
       where: { userId: session.user.id },
-      include: { parent: { select: { name: true } } },
-      orderBy: [{ parentId: "asc" }, { name: "asc" }],
-    }),
-    prisma.categoryDeclutterRule.findMany({
-      where: { userId: session.user.id },
-      include: { category: true },
-    }),
-    prisma.personRule.findMany({
-      where: { userId: session.user.id },
-      include: { category: true },
-      orderBy: { updatedAt: "desc" },
-    }),
-    prisma.orgRule.findMany({
-      where: { userId: session.user.id },
-      include: { category: true },
-      orderBy: { updatedAt: "desc" },
-    }),
-    prisma.emailEvent.findMany({
-      where: {
-        googleAccountId: { in: accountIds },
-        classificationCategoryId: { not: null },
-      },
-      include: { category: true },
-      orderBy: { date: "desc" },
-      take: 50,
-    }),
-    prisma.rejectedSuggestion.findMany({
-      where: { userId: session.user.id },
-      select: { type: true, value: true },
-    }),
-    params.import === "gmail" && accounts.length > 0
-      ? Promise.all(
-          accounts.map(async (acc) => {
-            try {
-              const labels = await listUserLabels(acc.id, session.user.id);
-              return { accountId: acc.id, accountEmail: acc.email, labels };
-            } catch (e) {
-              return { accountId: acc.id, accountEmail: acc.email, error: (e as Error).message };
-            }
-          })
-        )
-      : Promise.resolve(null),
-  ]);
+      select: { id: true, email: true },
+    });
+    const accountIds = accounts.map((a) => a.id);
+
+    [
+      declutterPref,
+      categories,
+      categoryRules,
+      personRules,
+      orgRules,
+      suggestedEvents,
+      rejected,
+      gmailLabelsByAccount,
+    ] = await Promise.all([
+      prisma.userDeclutterPref.findUnique({ where: { userId: session.user.id } }),
+      prisma.category.findMany({
+        where: { userId: session.user.id },
+        include: { parent: { select: { name: true } } },
+        orderBy: [{ parentId: "asc" }, { name: "asc" }],
+      }),
+      prisma.categoryDeclutterRule.findMany({
+        where: { userId: session.user.id },
+        include: { category: true },
+      }),
+      prisma.personRule.findMany({
+        where: { userId: session.user.id },
+        include: { category: true },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.orgRule.findMany({
+        where: { userId: session.user.id },
+        include: { category: true },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.emailEvent.findMany({
+        where: {
+          googleAccountId: { in: accountIds },
+          classificationCategoryId: { not: null },
+        },
+        include: { category: true },
+        orderBy: { date: "desc" },
+        take: 50,
+      }),
+      prisma.rejectedSuggestion.findMany({
+        where: { userId: session.user.id },
+        select: { type: true, value: true },
+      }),
+      params.import === "gmail" && accounts.length > 0
+        ? Promise.all(
+            accounts.map(async (acc) => {
+              try {
+                const labels = await listUserLabels(acc.id, session.user.id);
+                return { accountId: acc.id, accountEmail: acc.email, labels };
+              } catch (e) {
+                return {
+                  accountId: acc.id,
+                  accountEmail: acc.email,
+                  error: (e as Error).message,
+                };
+              }
+            })
+          )
+        : Promise.resolve(null),
+    ]);
+
+    // Ensure every category has a rule (in case added via setup step 4)
+    await ensureDeclutterRulesForCategories(session.user.id);
+  } catch (e) {
+    dbError = asDbErrorInfo(e)?.message ?? (e as Error)?.message ?? "Database error";
+  }
+
+  if (dbError) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Declutter policy</h1>
+          <p className="text-zinc-400 mt-1">Per-category rules and auto-archive.</p>
+        </div>
+        <div className="rounded-lg bg-red-950/50 border border-red-800 px-4 py-3 text-red-300 text-sm">
+          {dbError}
+        </div>
+        <p className="text-zinc-500 text-sm">
+          If this keeps happening in production, Neon may be waking up or the database URL may be
+          misconfigured.
+        </p>
+      </div>
+    );
+  }
+
+  const accountIds = accounts.map((a) => a.id);
   const gmailLabelsByAccountResult = gmailLabelsByAccount;
   const gmailLabelsError =
     gmailLabelsByAccountResult?.some((a) => "error" in a)
       ? gmailLabelsByAccountResult.find((a) => "error" in a)?.error ?? null
       : null;
-
-  // Ensure every category has a rule (in case added via setup step 4)
-  await ensureDeclutterRulesForCategories(session.user.id);
 
   const rulesByCategory = new Map(
     categoryRules.map((r) => [r.categoryId, r])

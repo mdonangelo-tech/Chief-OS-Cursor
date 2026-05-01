@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { syncGmailForUser } from "@/services/gmail/sync";
 import { syncCalendarForUser } from "@/services/calendar/sync";
 import { enrichUpcomingCalendarEvents } from "@/services/classification/calendar";
+import { asDbErrorInfo } from "@/lib/db-errors";
 import { NextResponse } from "next/server";
 
 /**
@@ -43,6 +44,13 @@ export async function POST() {
     });
   } catch (err) {
     console.error("Sync all error:", err);
+    const db = asDbErrorInfo(err);
+    if (db) {
+      return NextResponse.json(
+        { ok: false, error: db.message, code: db.code },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: (err as Error).message },
       { status: 500 }

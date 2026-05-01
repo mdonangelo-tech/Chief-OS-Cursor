@@ -21,8 +21,12 @@ export function SyncButtons() {
       const status = data?.reconnectRequired ? "reconnect" : data?.hasErrors ? "warn" : "ok";
       router.push(`/settings/accounts?sync=${status}`);
       router.refresh();
-    } catch {
-      router.push(`/settings/accounts?sync=error`);
+    } catch (e) {
+      const msg =
+        (e as Error)?.message?.trim() || "Sync failed. Please try again in a minute.";
+      router.push(
+        `/settings/accounts?sync=error&error=${encodeURIComponent(msg)}`
+      );
       router.refresh();
     } finally {
       setSyncing(null);

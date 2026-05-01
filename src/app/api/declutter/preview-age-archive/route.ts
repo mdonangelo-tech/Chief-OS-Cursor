@@ -40,7 +40,7 @@ async function getImpl(req: NextRequest) {
 
   const accounts = await prisma.googleAccount.findMany({
     where: { userId },
-    select: { id: true },
+    select: { id: true, email: true, syncStateJson: true },
   });
   const accountIds = accounts.map((a) => a.id);
   if (accountIds.length === 0) {
@@ -51,6 +51,15 @@ async function getImpl(req: NextRequest) {
       oldestDate: null,
       newestDate: null,
       excludedProtectedCount: 0,
+      debug: {
+        generatedAt: new Date().toISOString(),
+        days,
+        cutoff: cutoff.toISOString(),
+        scanned: 0,
+        accountCount: 0,
+        note:
+          "This preview reads EmailEvent rows in Postgres. If it looks stale, run Sync to reconcile INBOX label state from Gmail.",
+      },
     };
     return NextResponse.json(empty);
   }
@@ -139,6 +148,35 @@ async function getImpl(req: NextRequest) {
     oldestDate,
     newestDate,
     excludedProtectedCount,
+    debug: {
+      generatedAt: new Date().toISOString(),
+      days,
+      cutoff: cutoff.toISOString(),
+      scanned,
+      accountCount: accountIds.length,
+      accounts: accounts.map((a) => {
+        const syncState = (a.syncStateJson as Record<string, unknown> | null) ?? {};
+        const authError =
+          (syncState.authError as { code?: unknown; message?: unknown } | null) ?? null;
+        return {
+          id: a.id,
+          email: a.email,
+          lastSyncAt:
+            typeof syncState.lastSyncAt === "string" ? (syncState.lastSyncAt as string) : null,
+          lastGmailAttemptAt:
+            typeof syncState.lastGmailAttemptAt === "string"
+              ? (syncState.lastGmailAttemptAt as string)
+              : null,
+          lastCalendarAttemptAt:
+            typeof syncState.lastCalendarAttemptAt === "string"
+              ? (syncState.lastCalendarAttemptAt as string)
+              : null,
+          authErrorCode: typeof authError?.code === "string" ? (authError.code as string) : null,
+        };
+      }),
+      note:
+        "If this preview is stale, it usually means EmailEvent.labels still includes INBOX for messages already archived/moved in Gmail. Sync reconciles that label state.",
+    },
   };
   return NextResponse.json(res);
 }
