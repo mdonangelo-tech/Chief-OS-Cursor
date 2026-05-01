@@ -117,12 +117,13 @@ export function ArchiveByDaysRunner() {
           rel="noopener noreferrer"
           className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
         >
-          Archive in Gmail
+          Search in Gmail
         </a>
       </div>
       <p className="text-zinc-500 text-xs">
-        <strong>Archive in Gmail</strong> opens Gmail with the search—select all, then Archive. No ChiefOS resources used.{" "}
-        <strong>Archive here</strong> processes via ChiefOS (up to 10k/run, undoable via Audit).
+        <strong>Search in Gmail</strong> opens Gmail with the search. Gmail search is message-based and may surface threads with newer replies.
+        {" "}
+        <strong>Archive here</strong> is thread-aware (uses latest INBOX message in a thread) and is undoable via Audit.
       </p>
       {preview && (
         <div
