@@ -21,6 +21,8 @@ const BATCH_DELAY_MS = 50;
 const MAX_MESSAGES_PER_RUN = 120;
 /** Also reconcile some older INBOX rows to keep long-range previews fresh */
 const STALE_INBOX_RECONCILE_MAX = 120;
+/** Backfill older messages (beyond rolling window) over time */
+const BACKFILL_MAX_PER_RUN = 120;
 
 function afterDate(daysAgo: number): string {
   const d = new Date();
@@ -67,6 +69,8 @@ export async function syncGmailForAccount(
   rollingWindowStart.setDate(rollingWindowStart.getDate() - 14);
   rollingWindowStart.setHours(0, 0, 0, 0);
 
+  let nextBackfillBeforeAt: string | null = null;
+
   try {
     const lastCursorAt = syncState.lastGmailCursorAt
       ? new Date(syncState.lastGmailCursorAt as string)
@@ -94,10 +98,10 @@ export async function syncGmailForAccount(
     const query = `in:inbox after:${afterDateStr}`;
     let totalProcessed = 0;
 
-    async function processMessage(messageId: string): Promise<boolean> {
+    async function processMessage(messageId: string): Promise<Date | null> {
       try {
         const meta = await fetchMessageMetadata(accountId, userId, messageId);
-        if (!meta) return false;
+        if (!meta) return null;
         result.fetched++;
         const existing = await prisma.emailEvent.findUnique({
           where: { messageId },
@@ -124,10 +128,10 @@ export async function syncGmailForAccount(
           await prisma.emailEvent.create({ data });
           result.created++;
         }
-        return true;
+        return meta.date;
       } catch (err) {
         result.errors.push(`${messageId}: ${(err as Error).message}`);
-        return false;
+        return null;
       }
     }
 
@@ -148,6 +152,54 @@ export async function syncGmailForAccount(
         }
       }
       if (totalProcessed >= MAX_MESSAGES_PER_RUN) break;
+    }
+
+    // Progressive backfill (older than rolling window but within DAYS_TO_SYNC).
+    // Without this, the MAX_MESSAGES_PER_RUN cap means we only ever store the newest inbox
+    // messages, and "older than 30d" previews will be undercounted forever.
+    const rawBackfillBefore = typeof syncState.lastGmailBackfillBeforeAt === "string"
+      ? (syncState.lastGmailBackfillBeforeAt as string)
+      : null;
+    const backfillBefore =
+      rawBackfillBefore ? new Date(rawBackfillBefore) : rollingWindowStart;
+
+    if (backfillBefore.getTime() > maxBackfillStart.getTime()) {
+      const backfillQuery = `in:inbox after:${toAfterQueryDate(maxBackfillStart)} before:${toAfterQueryDate(backfillBefore)}`;
+      let backfillProcessed = 0;
+      let oldestSeen: Date | null = null;
+
+      for await (const ids of listMessageIds(accountId, userId, backfillQuery, BATCH_SIZE)) {
+        const toProcess = ids.slice(0, BACKFILL_MAX_PER_RUN - backfillProcessed);
+        if (toProcess.length === 0) break;
+
+        const batches: string[][] = [];
+        for (let i = 0; i < toProcess.length; i += PARALLEL_SIZE) {
+          batches.push(toProcess.slice(i, i + PARALLEL_SIZE));
+        }
+
+        for (const batch of batches) {
+          const dates = await Promise.all(batch.map(processMessage));
+          for (const d of dates) {
+            if (d && (!oldestSeen || d.getTime() < oldestSeen.getTime())) oldestSeen = d;
+          }
+          backfillProcessed += batch.length;
+          if (batch.length > 0) {
+            await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+          }
+        }
+
+        if (backfillProcessed >= BACKFILL_MAX_PER_RUN) break;
+      }
+
+      if (oldestSeen) {
+        // Move the window earlier for next run.
+        oldestSeen.setHours(0, 0, 0, 0);
+        oldestSeen.setDate(oldestSeen.getDate() - 1);
+        nextBackfillBeforeAt = oldestSeen.toISOString();
+      } else {
+        // No more messages in that backfill range; mark complete.
+        nextBackfillBeforeAt = maxBackfillStart.toISOString();
+      }
     }
 
     // Reconcile recent INBOX-labeled messages we already have in DB.
@@ -210,6 +262,7 @@ export async function syncGmailForAccount(
           lastSyncResult: result,
           authError,
           lastGmailAttemptAt: new Date().toISOString(),
+          ...(nextBackfillBeforeAt ? { lastGmailBackfillBeforeAt: nextBackfillBeforeAt } : {}),
           ...(authError || result.errors.length > 0
             ? {}
             : { lastGmailCursorAt: new Date().toISOString() }),
