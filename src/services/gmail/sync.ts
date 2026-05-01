@@ -5,7 +5,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { classifyAllUnclassifiedEmails } from "@/services/classification/engine";
+import { classifyRecentUnclassifiedEmailsNoLlm } from "@/services/classification/engine";
 import {
   fetchMessageMetadata,
   listMessageIds,
@@ -23,6 +23,9 @@ const MAX_MESSAGES_PER_RUN = 120;
 const STALE_INBOX_RECONCILE_MAX = 120;
 /** Backfill older messages (beyond rolling window) over time */
 const BACKFILL_MAX_PER_RUN = 120;
+/** Catch up DB coverage day-by-day without LLM cost */
+const CATCHUP_MAX_NEW_PER_RUN = 240;
+const CATCHUP_MAX_DAYS_PER_RUN = 6;
 
 function afterDate(daysAgo: number): string {
   const d = new Date();
@@ -70,6 +73,7 @@ export async function syncGmailForAccount(
   rollingWindowStart.setHours(0, 0, 0, 0);
 
   let nextBackfillBeforeAt: string | null = null;
+  let nextCatchupCursorDay: string | null = null;
 
   try {
     const lastCursorAt = syncState.lastGmailCursorAt
@@ -153,6 +157,80 @@ export async function syncGmailForAccount(
       }
       if (totalProcessed >= MAX_MESSAGES_PER_RUN) break;
     }
+
+    // Catch-up backfill (day-by-day) so we eventually *store* older Inbox messages in DB.
+    // This is the key for accurate long-range previews (e.g. "older_than:30d") without relying on LLM.
+    const catchupStart = maxBackfillStart;
+    const catchupEnd = rollingWindowStart;
+    const rawCatchupDay =
+      typeof syncState.gmailCatchupCursorDay === "string"
+        ? (syncState.gmailCatchupCursorDay as string)
+        : null;
+    let cursorDay = rawCatchupDay ? new Date(rawCatchupDay) : new Date(catchupStart);
+    cursorDay.setHours(0, 0, 0, 0);
+    if (cursorDay.getTime() < catchupStart.getTime()) cursorDay = new Date(catchupStart);
+
+    let catchupNew = 0;
+    let catchupDaysProcessed = 0;
+    while (
+      catchupNew < CATCHUP_MAX_NEW_PER_RUN &&
+      catchupDaysProcessed < CATCHUP_MAX_DAYS_PER_RUN &&
+      cursorDay.getTime() < catchupEnd.getTime()
+    ) {
+      const nextDay = new Date(cursorDay);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      const q = `in:inbox after:${toAfterQueryDate(cursorDay)} before:${toAfterQueryDate(nextDay)}`;
+      let dayComplete = true;
+
+      for await (const ids of listMessageIds(accountId, userId, q, BATCH_SIZE)) {
+        if (catchupNew >= CATCHUP_MAX_NEW_PER_RUN) {
+          dayComplete = false;
+          break;
+        }
+
+        const existing = await prisma.emailEvent.findMany({
+          where: { messageId: { in: ids } },
+          select: { messageId: true },
+        });
+        const existingSet = new Set(existing.map((e) => e.messageId));
+        const missing = ids.filter((id) => !existingSet.has(id));
+        if (missing.length === 0) continue;
+
+        const toFetch = missing.slice(0, CATCHUP_MAX_NEW_PER_RUN - catchupNew);
+        const batches: string[][] = [];
+        for (let i = 0; i < toFetch.length; i += PARALLEL_SIZE) {
+          batches.push(toFetch.slice(i, i + PARALLEL_SIZE));
+        }
+
+        for (const batch of batches) {
+          const dates = await Promise.all(batch.map(processMessage));
+          catchupNew += batch.filter((_, i) => dates[i] !== null).length;
+          if (batch.length > 0) {
+            await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+          }
+          if (catchupNew >= CATCHUP_MAX_NEW_PER_RUN) {
+            dayComplete = false;
+            break;
+          }
+        }
+
+        if (!dayComplete) break;
+      }
+
+      if (dayComplete) {
+        cursorDay = nextDay;
+        catchupDaysProcessed++;
+      } else {
+        // Stay on this day and continue next run (we'll skip already ingested messageIds).
+        break;
+      }
+    }
+
+    nextCatchupCursorDay =
+      cursorDay.getTime() > catchupEnd.getTime()
+        ? catchupEnd.toISOString()
+        : cursorDay.toISOString();
 
     // Progressive backfill (older than rolling window but within DAYS_TO_SYNC).
     // Without this, the MAX_MESSAGES_PER_RUN cap means we only ever store the newest inbox
@@ -262,6 +340,7 @@ export async function syncGmailForAccount(
           lastSyncResult: result,
           authError,
           lastGmailAttemptAt: new Date().toISOString(),
+          ...(nextCatchupCursorDay ? { gmailCatchupCursorDay: nextCatchupCursorDay } : {}),
           ...(nextBackfillBeforeAt ? { lastGmailBackfillBeforeAt: nextBackfillBeforeAt } : {}),
           ...(authError || result.errors.length > 0
             ? {}
@@ -297,7 +376,8 @@ export async function syncGmailForUser(userId: string): Promise<SyncResult[]> {
     }
   }
 
-  await classifyAllUnclassifiedEmails(userId);
+  // Keep classification bounded and avoid LLM cost during large backfills.
+  await classifyRecentUnclassifiedEmailsNoLlm(userId, { max: 200 });
 
   return results;
 }

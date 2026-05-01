@@ -378,3 +378,39 @@ export async function classifyAllUnclassifiedEmails(
 
   return { classified, total: events.length, llmUsed: 0 };
 }
+
+/**
+ * Classify a bounded number of recent unclassified emails using rules + heuristics only.
+ * This is intended to keep sync/backfill from triggering large classification sweeps or LLM usage.
+ */
+export async function classifyRecentUnclassifiedEmailsNoLlm(
+  userId: string,
+  opts?: { max?: number }
+): Promise<{ classified: number; totalConsidered: number }> {
+  const max = Math.max(0, Math.min(2000, opts?.max ?? 200));
+  if (max === 0) return { classified: 0, totalConsidered: 0 };
+
+  const accounts = await prisma.googleAccount.findMany({
+    where: { userId },
+    select: { id: true },
+  });
+  const accountIds = accounts.map((a) => a.id);
+
+  const events = await prisma.emailEvent.findMany({
+    where: {
+      googleAccountId: { in: accountIds },
+      classificationCategoryId: null,
+    },
+    select: { id: true },
+    orderBy: { date: "desc" },
+    take: max,
+  });
+
+  let classified = 0;
+  for (const e of events) {
+    const result = await classifyEmailEvent(userId, e.id, { remaining: 0 });
+    if (result) classified++;
+  }
+
+  return { classified, totalConsidered: events.length };
+}
