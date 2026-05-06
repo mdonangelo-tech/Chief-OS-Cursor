@@ -49,6 +49,13 @@ export type RunAutoArchiveResponse = {
   remainingEligible: number;
 };
 
+export type RunAgeArchiveResponse = {
+  ok: true;
+  runId: string;
+  processed: number;
+  excludedProtectedCount: number;
+};
+
 export type PreviewAgeArchiveResponse = {
   ok: true;
   total: number;

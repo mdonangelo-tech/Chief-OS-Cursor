@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { PreviewAgeArchiveResponse, RunAutoArchiveResponse } from "@/types/declutter";
+import type { PreviewAgeArchiveResponse, RunAgeArchiveResponse } from "@/types/declutter";
 import { apiFetch } from "@/lib/api-base";
 
 const DAY_OPTIONS = [7, 14, 30, 60, 90];
@@ -52,12 +52,18 @@ export function ArchiveByDaysRunner() {
   async function runArchive() {
     setLoading("run");
     try {
-      const res = await apiFetch("/api/declutter/run-auto-archive", { method: "POST" });
-      const data = (await res.json()) as RunAutoArchiveResponse | { error?: string };
-      if (!res.ok || !("ok" in data)) throw new Error((data as any).error ?? "Failed");
+      const res = await apiFetch(
+        `/api/declutter/run-age-archive?days=${encodeURIComponent(String(days))}`,
+        { method: "POST" }
+      );
+      const data = (await res.json()) as any;
+      if (!res.ok || data?.ok !== true) throw new Error(data?.error ?? "Failed");
+      const ok = data as RunAgeArchiveResponse;
       showToast(
         "success",
-        `Archived ${data.processed}. ${data.remainingEligible} still eligible — run again to continue.`
+        ok.processed === 0
+          ? "Nothing left to archive."
+          : `Archived ${ok.processed} message(s).`
       );
       setConfirmOpen(false);
       await fetchPreview("preview");
@@ -73,26 +79,30 @@ export function ArchiveByDaysRunner() {
     stopAllRef.current = false;
     try {
       let totalProcessed = 0;
-      let remaining = preview?.total ?? null;
       let batches = 0;
       const MAX_BATCHES = 50; // safety: up to 50k per click
 
       while (!stopAllRef.current && batches < MAX_BATCHES) {
-        const res = await apiFetch("/api/declutter/run-auto-archive", { method: "POST" });
-        const data = (await res.json()) as RunAutoArchiveResponse | { error?: string };
-        if (!res.ok || !("ok" in data)) throw new Error((data as any).error ?? "Failed");
-        totalProcessed += data.processed;
-        remaining = data.remainingEligible;
+        const res = await apiFetch(
+          `/api/declutter/run-age-archive?days=${encodeURIComponent(String(days))}`,
+          { method: "POST" }
+        );
+        const data = (await res.json()) as any;
+        if (!res.ok || data?.ok !== true) throw new Error(data?.error ?? "Failed");
+        const ok = data as RunAgeArchiveResponse;
+        totalProcessed += ok.processed;
         batches++;
 
-        if (data.processed === 0 || data.remainingEligible === 0) break;
+        if (ok.processed === 0) break;
       }
 
       showToast(
         "success",
         stopAllRef.current
-          ? `Archived ${totalProcessed}. Stopped with ${remaining ?? "?"} still eligible.`
-          : `Archived ${totalProcessed}. ${remaining ?? 0} still eligible — run again to continue.`
+          ? `Archived ${totalProcessed}. Stopped.`
+          : totalProcessed === 0
+            ? "Nothing left to archive."
+            : `Archived ${totalProcessed}.`
       );
       setConfirmOpen(false);
       await fetchPreview("preview");

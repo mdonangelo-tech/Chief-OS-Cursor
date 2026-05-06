@@ -33,6 +33,27 @@ export type RunAutoArchiveBatchResult = {
   remainingEligible: number;
 };
 
+export async function updateDbLabelsAfterBatch(
+  messageIds: string[],
+  addLabel: string
+): Promise<void> {
+  if (messageIds.length === 0) return;
+  await prisma.$executeRaw(
+    Prisma.sql`
+      UPDATE "EmailEvent"
+      SET
+        "labels" = (
+          SELECT ARRAY(
+            SELECT DISTINCT x
+            FROM UNNEST(ARRAY_REMOVE("labels", 'INBOX') || ARRAY[${addLabel}]) AS x
+          )
+        ),
+        "unread" = false
+      WHERE "messageId" = ANY(${messageIds})
+    `
+  );
+}
+
 export async function runAutoArchiveBatch(
   userId: string,
   opts?: { now?: Date; maxPerCall?: number }
@@ -147,27 +168,6 @@ export async function runAutoArchiveBatch(
       if (!byAccountArchive.has(e.googleAccountId)) byAccountArchive.set(e.googleAccountId, []);
       byAccountArchive.get(e.googleAccountId)!.push(e.messageId);
     }
-  }
-
-  async function updateDbLabelsAfterBatch(
-    messageIds: string[],
-    addLabel: string
-  ): Promise<void> {
-    if (messageIds.length === 0) return;
-    await prisma.$executeRaw(
-      Prisma.sql`
-        UPDATE "EmailEvent"
-        SET
-          "labels" = (
-            SELECT ARRAY(
-              SELECT DISTINCT x
-              FROM UNNEST(ARRAY_REMOVE("labels", 'INBOX') || ARRAY[${addLabel}]) AS x
-            )
-          ),
-          "unread" = false
-        WHERE "messageId" = ANY(${messageIds})
-      `
-    );
   }
 
   const reason = "auto-archive-batch";
