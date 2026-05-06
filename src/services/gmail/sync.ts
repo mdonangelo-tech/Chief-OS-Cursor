@@ -30,8 +30,16 @@ const STALE_INBOX_RECONCILE_MAX = 120;
 /** Backfill older messages (beyond rolling window) over time */
 const BACKFILL_MAX_PER_RUN = 120;
 /** Catch up DB coverage day-by-day without LLM cost */
-const CATCHUP_MAX_NEW_PER_RUN = 240;
-const CATCHUP_MAX_DAYS_PER_RUN = 6;
+const CATCHUP_MAX_NEW_PER_RUN =
+  Math.max(
+    50,
+    Math.min(2000, parseInt(process.env.GMAIL_CATCHUP_MAX_NEW ?? "240", 10) || 240)
+  );
+const CATCHUP_MAX_DAYS_PER_RUN =
+  Math.max(
+    1,
+    Math.min(31, parseInt(process.env.GMAIL_CATCHUP_MAX_DAYS ?? "6", 10) || 6)
+  );
 
 function afterDate(daysAgo: number): string {
   const d = new Date();

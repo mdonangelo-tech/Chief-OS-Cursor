@@ -16,6 +16,9 @@ export type DeclutterPreviewDebug = {
     lastSyncAt?: string | null;
     lastGmailAttemptAt?: string | null;
     lastCalendarAttemptAt?: string | null;
+    lastGmailCursorAt?: string | null;
+    lastGmailBackfillBeforeAt?: string | null;
+    gmailCatchupCursorDay?: string | null;
     authErrorCode?: string | null;
   }>;
   note?: string;

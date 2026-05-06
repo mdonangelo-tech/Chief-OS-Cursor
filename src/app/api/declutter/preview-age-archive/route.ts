@@ -251,6 +251,18 @@ async function getImpl(req: NextRequest) {
             typeof syncState.lastCalendarAttemptAt === "string"
               ? (syncState.lastCalendarAttemptAt as string)
               : null,
+          lastGmailCursorAt:
+            typeof syncState.lastGmailCursorAt === "string"
+              ? (syncState.lastGmailCursorAt as string)
+              : null,
+          lastGmailBackfillBeforeAt:
+            typeof syncState.lastGmailBackfillBeforeAt === "string"
+              ? (syncState.lastGmailBackfillBeforeAt as string)
+              : null,
+          gmailCatchupCursorDay:
+            typeof syncState.gmailCatchupCursorDay === "string"
+              ? (syncState.gmailCatchupCursorDay as string)
+              : null,
           authErrorCode: typeof authError?.code === "string" ? (authError.code as string) : null,
         };
       }),
