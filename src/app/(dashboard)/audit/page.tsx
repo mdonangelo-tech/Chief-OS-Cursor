@@ -3,9 +3,20 @@ import { prisma } from "@/lib/prisma";
 import { decodeHtmlEntities } from "@/lib/html-entities";
 import { rollbackArchive, rollbackSpam } from "@/services/gmail/actions";
 import { rollbackRunAction } from "@/lib/brief-actions";
-import { GMAIL_CHIEFOS_ARCHIVED_URL } from "@/services/gmail/labels";
+import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+
+function gmailSearchUrlForAccount(email: string, query: string): string {
+  const q = encodeURIComponent(query);
+  const authuser = encodeURIComponent(email);
+  return `https://mail.google.com/mail/?authuser=${authuser}#search/${q}`;
+}
+
+function gmailMessageUrlForAccount(email: string, messageId: string): string {
+  const authuser = encodeURIComponent(email);
+  return `https://mail.google.com/mail/?authuser=${authuser}#all/${encodeURIComponent(messageId)}`;
+}
 
 export default async function AuditPage() {
   const session = await auth();
@@ -43,22 +54,35 @@ export default async function AuditPage() {
       })
     : [];
   const emailByMessageId = new Map(emailEvents.map((e) => [e.messageId, e]));
+  const accountsInLogs = Array.from(
+    new Set(logs.map((l) => l.googleAccount.email).filter(Boolean))
+  );
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Gmail action history</h1>
         <p className="text-zinc-400 mt-1">
-          Inspect past archive actions and undo when needed.{" "}
-          <a
-            href={GMAIL_CHIEFOS_ARCHIVED_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-amber-500 hover:underline"
-          >
-            View all ChiefOS/Archived in Gmail →
-          </a>
+          Inspect past archive actions and undo when needed.
         </p>
+        {accountsInLogs.length > 0 && (
+          <div className="mt-2 text-zinc-500 text-sm">
+            View label in Gmail:{" "}
+            {accountsInLogs.map((email, i) => (
+              <span key={email}>
+                {i > 0 ? " · " : ""}
+                <a
+                  href={gmailSearchUrlForAccount(email, `label:${CHIEFOS_ARCHIVED_LABEL}`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-amber-500 hover:underline"
+                >
+                  {email}
+                </a>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {runsWithLogs.size > 0 && (
@@ -143,24 +167,34 @@ export default async function AuditPage() {
                   </div>
                 </div>
                 {log.rollbackStatus === "applied" && log.messageId && (
-                  <form
-                    action={async () => {
-                      "use server";
-                      if (log.actionType === "SPAM") {
-                        await rollbackSpam(session.user!.id!, log.id);
-                      } else {
-                        await rollbackArchive(session.user!.id!, log.id);
-                      }
-                      redirect("/audit");
-                    }}
-                  >
-                    <button
-                      type="submit"
-                      className="text-sm text-amber-500 hover:text-amber-400"
+                  <div className="flex flex-col items-end gap-2">
+                    <a
+                      href={gmailMessageUrlForAccount(log.googleAccount.email, log.messageId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-zinc-400 hover:text-zinc-200"
                     >
-                      Undo
-                    </button>
-                  </form>
+                      Open in Gmail
+                    </a>
+                    <form
+                      action={async () => {
+                        "use server";
+                        if (log.actionType === "SPAM") {
+                          await rollbackSpam(session.user!.id!, log.id);
+                        } else {
+                          await rollbackArchive(session.user!.id!, log.id);
+                        }
+                        redirect("/audit");
+                      }}
+                    >
+                      <button
+                        type="submit"
+                        className="text-sm text-amber-500 hover:text-amber-400"
+                      >
+                        Undo
+                      </button>
+                    </form>
+                  </div>
                 )}
               </div>
             </li>
