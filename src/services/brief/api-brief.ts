@@ -83,6 +83,7 @@ export interface BriefPayload {
   }>;
   calendarWatchouts: {
     summary: {
+      narrative?: string;
       overloadedDays: Array<{ date: string; count: number }>;
       earlyStarts: Array<{ date: string; time: string }>;
       backToBackChains: Array<{ date: string; count: number }>;
@@ -267,6 +268,30 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     backToBackChains.push({ date, count });
   }
 
+  const meetingEvents = upcomingEvents.filter((e) => (e.attendees?.length ?? 0) >= 2);
+  const familyKeyword = /\b(school|pickup|drop[- ]?off|soccer|practice|kids?|camp|birthday|pediatric|dentist|daycare)\b/i;
+  const familyEvents = upcomingEvents.filter((e) => familyKeyword.test(e.title ?? ""));
+  const meetingHours = meetingEvents.reduce((s, e) => {
+    const mins =
+      typeof e.durationMinutes === "number" && Number.isFinite(e.durationMinutes)
+        ? e.durationMinutes
+        : Math.max(0, Math.round((e.endAt.getTime() - e.startAt.getTime()) / 60000));
+    return s + mins / 60;
+  }, 0);
+
+  let calendarNarrative: string | undefined;
+  if (meetingEvents.length === 0 && familyEvents.length === 0) {
+    calendarNarrative = "No urgent calendar conflicts detected.";
+  } else if (meetingHours <= 2 && familyEvents.length > 0) {
+    calendarNarrative = `Your true meeting load is light, but you have ${familyEvents.length} family logistics item(s).`;
+  } else if (meetingHours <= 2) {
+    calendarNarrative = "Your true meeting load is light.";
+  } else if (meetingHours >= 8) {
+    calendarNarrative = `Heavy meeting load this week (~${Math.round(meetingHours)}h).`;
+  } else if (backToBackChains.length > 0) {
+    calendarNarrative = "High context-switching risk on a few days this week.";
+  }
+
   const digestByCategory: Record<string, { newCount: number; olderThan48hCount: number }> = {};
   const now = Date.now();
   for (const e of digestEmails) {
@@ -423,6 +448,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     })),
     calendarWatchouts: {
       summary: {
+        narrative: calendarNarrative,
         overloadedDays: overloaded,
         earlyStarts: earlyStarts.slice(0, 5),
         backToBackChains: Array.from(backToBackByDay.entries()).map(([date, count]) => ({ date, count })),

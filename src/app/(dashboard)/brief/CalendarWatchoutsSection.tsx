@@ -4,6 +4,7 @@ import { useState } from "react";
 
 interface CalendarWatchoutsSectionProps {
   summary: {
+    narrative?: string;
     overloadedDays: Array<{ date: string; count: number }>;
     earlyStarts: Array<{ date: string; time: string }>;
     backToBackChains: Array<{ date: string; count: number }>;
@@ -61,8 +62,11 @@ export function CalendarWatchoutsSection({ summary, byDay }: CalendarWatchoutsSe
       </div>
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
         <p className="text-zinc-300 text-sm">
-          {summaryParts.length > 0 ? summaryParts.join(" · ") : "No watchouts"}
+          {summary.narrative ? summary.narrative : summaryParts.length > 0 ? summaryParts.join(" · ") : "No watchouts"}
         </p>
+        {summary.narrative && summaryParts.length > 0 && (
+          <p className="text-zinc-500 text-xs mt-1">{summaryParts.join(" · ")}</p>
+        )}
       </div>
       {expanded && Object.keys(byDay).length > 0 && (
         <div className="mt-3 space-y-2">
