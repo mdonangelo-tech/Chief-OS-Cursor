@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { asDbErrorInfo } from "@/lib/db-errors";
 import Link from "next/link";
 import { SyncButtons } from "./SyncButtons";
+import { LocalTime } from "@/components/LocalTime";
 
 type AccountSyncState = {
   lastSyncAt?: string;
@@ -116,7 +117,7 @@ export default async function AccountsPage({
                       )}
                       {syncState?.lastSyncAt && (
                         <span className="ml-2 text-zinc-600 text-xs">
-                          last sync {new Date(syncState.lastSyncAt).toLocaleString()}
+                          last sync <LocalTime value={syncState.lastSyncAt} />
                         </span>
                       )}
                       {needsReconnect && (

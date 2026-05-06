@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { onboardingV1Enabled } from "@/lib/env";
 import { SettingsOnboardingUndoClient } from "./undo-client";
+import { LocalTime } from "@/components/LocalTime";
 
 export default async function SettingsOnboardingPage() {
   if (!onboardingV1Enabled()) notFound();
@@ -32,7 +33,7 @@ export default async function SettingsOnboardingPage() {
           <span className="text-zinc-500">Last run:</span>{" "}
           {lastRun ? (
             <span className="text-zinc-200">
-              {lastRun.createdAt.toLocaleString()} · {lastRun.status}
+              <LocalTime value={lastRun.createdAt} /> · {lastRun.status}
             </span>
           ) : (
             <span className="text-zinc-500">None yet</span>
@@ -41,7 +42,9 @@ export default async function SettingsOnboardingPage() {
         {lastRun?.completedAt && (
           <div>
             <span className="text-zinc-500">Completed:</span>{" "}
-            <span className="text-zinc-200">{lastRun.completedAt.toLocaleString()}</span>
+            <span className="text-zinc-200">
+              <LocalTime value={lastRun.completedAt} />
+            </span>
           </div>
         )}
       </div>
