@@ -190,22 +190,22 @@ export default async function AuditPage({
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Gmail action history</h1>
-        <p className="text-zinc-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           Inspect past archive actions and undo when needed.
         </p>
-        <p className="text-zinc-600 text-xs mt-1">
+        <p className="text-muted-foreground/80 text-xs mt-1">
           Note: Gmail labels list messages by <strong>received date</strong>. This page lists actions by <strong>archived/spammed time</strong>.
         </p>
         {accounts.length > 0 && (
           <div className="mt-3 space-y-2">
-            <div className="text-zinc-500 text-sm">Accounts</div>
+            <div className="text-muted-foreground text-sm">Accounts</div>
             <div className="flex flex-wrap gap-2">
               <Link
                 href={buildAuditUrl({ account: "all", sort, page: "1", pageSize: pageSizeRaw, runId: runIdFilter ?? undefined })}
                 className={`rounded-full border px-3 py-1 text-xs ${
                   !selectedAccountId
-                    ? "border-amber-700 bg-amber-950/30 text-amber-200"
-                    : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:bg-zinc-900"
+                    ? "border-accent/40 bg-accent/15 text-foreground"
+                    : "border-border/10 bg-surface/50 text-muted-foreground hover:bg-surface2/60 hover:text-foreground"
                 }`}
               >
                 All ({accounts.reduce((sum, a) => sum + (countByAccountId.get(a.id) ?? 0), 0)})
@@ -224,8 +224,8 @@ export default async function AuditPage({
                     href={buildAuditUrl({ account: a.id, sort, page: "1", pageSize: pageSizeRaw, runId: runIdFilter ?? undefined })}
                     className={`rounded-full border px-3 py-1 text-xs ${
                       active
-                        ? "border-amber-700 bg-amber-950/30 text-amber-200"
-                        : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:bg-zinc-900"
+                        ? "border-accent/40 bg-accent/15 text-foreground"
+                        : "border-border/10 bg-surface/50 text-muted-foreground hover:bg-surface2/60 hover:text-foreground"
                     }`}
                     title={
                       needsReconnect
@@ -243,7 +243,7 @@ export default async function AuditPage({
                 );
               })}
             </div>
-            <div className="text-zinc-500 text-sm">
+            <div className="text-muted-foreground text-sm">
               View label in Gmail:{" "}
               {accounts.map((a, i) => (
                 <span key={a.email}>
@@ -252,7 +252,7 @@ export default async function AuditPage({
                     href={gmailSearchUrlForAccount(a.email, `label:${CHIEFOS_ARCHIVED_LABEL}`)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-amber-500 hover:underline"
+                    className="text-accent hover:underline"
                   >
                     {a.email}
                   </a>
@@ -265,8 +265,8 @@ export default async function AuditPage({
 
       {topRuns.length > 0 && (
         <section>
-          <h2 className="text-lg font-medium text-zinc-200 mb-3">Runs</h2>
-          <p className="text-zinc-500 text-sm mb-3">
+          <h2 className="text-lg font-medium text-foreground mb-3">Runs</h2>
+          <p className="text-muted-foreground text-sm mb-3">
             Runs group automated actions. Counts below reflect <strong>all</strong> entries in each run (not just the current page).
           </p>
           <ul className="space-y-3">
@@ -282,9 +282,9 @@ export default async function AuditPage({
                 .filter(Boolean) as string[];
 
               return (
-                <li key={runId} className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
+                <li key={runId} className="rounded-2xl border border-border/10 bg-surface/60 p-3 shadow-soft">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-zinc-400 text-sm">
+                  <span className="text-muted-foreground text-sm">
                     <LocalTime value={r._max.timestamp} /> — {processed} processed
                     {archived ? ` · ${archived} archived` : ""}
                     {spammed ? ` · ${spammed} spammed` : ""}
@@ -292,7 +292,7 @@ export default async function AuditPage({
                   <div className="flex items-center gap-3">
                     <Link
                       href={buildAuditUrl({ account: selectedAccountId ?? "all", runId, sort, page: "1", pageSize: pageSizeRaw })}
-                      className="text-sm text-zinc-500 hover:text-zinc-300"
+                      className="text-sm text-muted-foreground hover:text-foreground"
                     >
                       View entries
                     </Link>
@@ -303,13 +303,13 @@ export default async function AuditPage({
                       name="returnTo"
                       value={buildAuditUrl({ account: selectedAccountId ?? "all", sort, page: String(safePage), pageSize: pageSizeRaw, runId: runIdFilter ?? undefined })}
                     />
-                    <button type="submit" className="text-sm text-amber-500 hover:text-amber-400">
+                    <button type="submit" className="text-sm text-accent hover:text-accent/80">
                       Undo entire run
                     </button>
                   </form>
                   </div>
                 </div>
-                <div className="mt-1 text-xs text-zinc-600">
+                <div className="mt-1 text-xs text-muted-foreground/80">
                   Run {runId}
                   {runAccEmails.length > 0 ? ` · ${runAccEmails.join(" · ")}` : ""}
                 </div>
@@ -321,13 +321,13 @@ export default async function AuditPage({
       )}
 
       {logs.length === 0 ? (
-        <p className="text-zinc-500">No Gmail actions yet.</p>
+        <p className="text-muted-foreground">No Gmail actions yet.</p>
       ) : (
         <>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-lg font-medium text-zinc-200">All entries</h2>
-              <div className="text-zinc-500 text-sm mt-1">
+              <h2 className="text-lg font-medium text-foreground">All entries</h2>
+              <div className="text-muted-foreground text-sm mt-1">
                 {totalEntries.toLocaleString()} total
                 {runIdFilter ? (
                   <>
@@ -335,7 +335,7 @@ export default async function AuditPage({
                     <span className="font-mono text-xs">run {runIdFilter}</span>{" "}
                     <Link
                       href={buildAuditUrl({ account: selectedAccountId ?? "all", sort, page: "1", pageSize: pageSizeRaw })}
-                      className="text-amber-500 hover:underline"
+                      className="text-accent hover:underline"
                     >
                       clear
                     </Link>
@@ -350,12 +350,12 @@ export default async function AuditPage({
             <form method="get" className="flex flex-wrap items-center gap-2 text-sm">
               <input type="hidden" name="account" value={selectedAccountId ?? "all"} />
               {runIdFilter && <input type="hidden" name="runId" value={runIdFilter} />}
-              <label className="text-zinc-500">
+              <label className="text-muted-foreground">
                 Sort{" "}
                 <select
                   name="sort"
                   defaultValue={sort}
-                  className="ml-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-200"
+                  className="ml-1 rounded-xl border border-border/10 bg-background px-2 py-1 text-foreground"
                 >
                   <option value="action_desc">Recently archived (action time)</option>
                   <option value="action_asc">Oldest archived (action time)</option>
@@ -363,12 +363,12 @@ export default async function AuditPage({
                   <option value="email_oldest">Oldest email date</option>
                 </select>
               </label>
-              <label className="text-zinc-500">
+              <label className="text-muted-foreground">
                 Page size{" "}
                 <select
                   name="pageSize"
                   defaultValue={pageSizeRaw}
-                  className="ml-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-200"
+                  className="ml-1 rounded-xl border border-border/10 bg-background px-2 py-1 text-foreground"
                 >
                   <option value="10">10</option>
                   <option value="25">25</option>
@@ -378,7 +378,7 @@ export default async function AuditPage({
               </label>
               <button
                 type="submit"
-                className="rounded-lg border border-zinc-700 px-3 py-1 text-zinc-200 hover:bg-zinc-800"
+                className="rounded-xl border border-border/10 bg-surface/50 px-3 py-1 text-foreground hover:bg-surface2/60"
               >
                 Apply
               </button>
@@ -386,7 +386,7 @@ export default async function AuditPage({
           </div>
 
           {pageSize !== "all" && totalPages > 1 && (
-            <div className="flex items-center justify-between text-sm text-zinc-500">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>
                 Page {safePage} of {totalPages}
               </span>
@@ -399,7 +399,7 @@ export default async function AuditPage({
                     page: String(Math.max(1, safePage - 1)),
                     pageSize: pageSizeRaw,
                   })}
-                  className={`rounded border border-zinc-700 px-3 py-1 hover:bg-zinc-800 ${
+                  className={`rounded-xl border border-border/10 bg-surface/50 px-3 py-1 hover:bg-surface2/60 ${
                     safePage <= 1 ? "pointer-events-none opacity-40" : ""
                   }`}
                 >
@@ -413,7 +413,7 @@ export default async function AuditPage({
                     page: String(Math.min(totalPages, safePage + 1)),
                     pageSize: pageSizeRaw,
                   })}
-                  className={`rounded border border-zinc-700 px-3 py-1 hover:bg-zinc-800 ${
+                  className={`rounded-xl border border-border/10 bg-surface/50 px-3 py-1 hover:bg-surface2/60 ${
                     safePage >= totalPages ? "pointer-events-none opacity-40" : ""
                   }`}
                 >
@@ -429,36 +429,36 @@ export default async function AuditPage({
             return (
             <li
               key={log.id}
-              className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4"
+              className="rounded-2xl border border-border/10 bg-surface/60 p-4 shadow-soft"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-zinc-200">
+                  <div className="font-medium text-foreground">
                     {log.actionType} — {log.googleAccount.email}
                     {log.reason && (
-                      <span className="text-zinc-500 font-normal ml-1">· {log.reason}</span>
+                      <span className="text-muted-foreground font-normal ml-1">· {log.reason}</span>
                     )}
                   </div>
                   {email ? (
                     <>
-                      <div className="text-zinc-300 text-sm mt-1 truncate" title={email.subject ?? undefined}>
+                      <div className="text-foreground/90 text-sm mt-1 truncate" title={email.subject ?? undefined}>
                         {decodeHtmlEntities(email.subject ?? "") || "(No subject)"}
                       </div>
-                      <div className="text-zinc-500 text-xs mt-0.5 truncate">{decodeHtmlEntities(email.from_)}</div>
-                      <div className="text-zinc-600 text-xs mt-0.5">
+                      <div className="text-muted-foreground text-xs mt-0.5 truncate">{decodeHtmlEntities(email.from_)}</div>
+                      <div className="text-muted-foreground/80 text-xs mt-0.5">
                         Received <LocalTime value={email.date} />
                       </div>
                       {email.snippet && (
-                        <div className="text-zinc-600 text-xs mt-1 line-clamp-2">{decodeHtmlEntities(email.snippet)}</div>
+                        <div className="text-muted-foreground/80 text-xs mt-1 line-clamp-2">{decodeHtmlEntities(email.snippet)}</div>
                       )}
                       <div className="flex flex-wrap gap-1 mt-1">
                         {email.category && (
-                          <span className="inline-block rounded bg-amber-900/50 px-1.5 py-0.5 text-xs text-amber-200">
+                          <span className="inline-block rounded bg-accent/15 px-1.5 py-0.5 text-xs text-accent">
                             {email.category.name}
                           </span>
                         )}
                         {email.labels.length > 0 && (
-                          <span className="text-zinc-600 text-xs">
+                          <span className="text-muted-foreground/80 text-xs">
                             {email.labels.slice(0, 4).join(", ")}
                             {email.labels.length > 4 ? " …" : ""}
                           </span>
@@ -466,16 +466,16 @@ export default async function AuditPage({
                       </div>
                     </>
                   ) : (
-                    <div className="text-zinc-500 text-sm mt-1">
+                    <div className="text-muted-foreground text-sm mt-1">
                       {log.messageId && (
                         <span className="font-mono text-xs">{log.messageId.slice(0, 24)}…</span>
                       )}
                     </div>
                   )}
-                  <div className="text-zinc-600 text-xs mt-2">
+                  <div className="text-muted-foreground/80 text-xs mt-2">
                     <LocalTime value={log.timestamp} />
                     {log.rollbackStatus === "reverted" && (
-                      <span className="ml-2 text-amber-600">Reverted</span>
+                      <span className="ml-2 text-danger">Reverted</span>
                     )}
                   </div>
                 </div>
@@ -485,7 +485,7 @@ export default async function AuditPage({
                       href={gmailMessageUrlForAccount(log.googleAccount.email, log.messageId)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-zinc-400 hover:text-zinc-200"
+                      className="text-sm text-muted-foreground hover:text-foreground"
                     >
                       Open in Gmail
                     </a>
@@ -510,7 +510,7 @@ export default async function AuditPage({
                     >
                       <button
                         type="submit"
-                        className="text-sm text-amber-500 hover:text-amber-400"
+                        className="text-sm text-accent hover:text-accent/80"
                       >
                         Undo
                       </button>
@@ -525,8 +525,8 @@ export default async function AuditPage({
         </>
       )}
 
-      <p className="text-zinc-500 text-sm">
-        <Link href="/brief" className="hover:text-zinc-400">
+      <p className="text-muted-foreground text-sm">
+        <Link href="/brief" className="hover:text-foreground">
           ← Back to Brief
         </Link>
       </p>
