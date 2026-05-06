@@ -51,21 +51,21 @@ export function OnboardingGoalsClient({
         <h1 className="text-2xl font-semibold">
           {mode === "settings" ? "Personal context" : "Goals"}
         </h1>
-        <p className="text-zinc-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           {mode === "settings"
             ? "What are you optimizing for right now? This helps ChiefOS prioritize your Brief."
             : "What are you optimizing for over the next 30 days?"}
         </p>
       </div>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 space-y-3">
+      <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 space-y-3 shadow-soft">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-medium">Suggested</h2>
           <button
             type="button"
             disabled={saving}
             onClick={() => saveAll()}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+            className="rounded-xl border border-border/10 bg-surface/50 px-3 py-2 text-sm text-foreground hover:bg-surface2/60 disabled:opacity-50"
           >
             Save
           </button>
@@ -85,8 +85,8 @@ export function OnboardingGoalsClient({
               }}
               className={`rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50 ${
                 g.enabled
-                  ? "border-amber-600/60 bg-amber-600/10 text-amber-200"
-                  : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:bg-zinc-900"
+                  ? "border-accent/40 bg-accent/15 text-foreground"
+                  : "border-border/10 bg-surface/50 text-muted-foreground hover:bg-surface2/60 hover:text-foreground"
               }`}
               title={g.enabled ? "Enabled" : "Disabled"}
             >
@@ -95,15 +95,15 @@ export function OnboardingGoalsClient({
           ))}
         </div>
 
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-muted-foreground">
           Tip: leave more on. We’ll learn what to dial down during the scan.
         </p>
       </div>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 space-y-3">
+      <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 space-y-3 shadow-soft">
         <h2 className="text-lg font-medium">Your words (optional)</h2>
         <textarea
-          className="w-full min-h-28 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500"
+          className="w-full min-h-28 rounded-xl border border-border/10 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
           placeholder="Example: ‘Protect mornings for deep work, and make sure I never miss investors or my spouse. Keep kids logistics visible without clutter.’"
           value={freeText}
           disabled={saving}
@@ -115,12 +115,12 @@ export function OnboardingGoalsClient({
             type="button"
             disabled={saving}
             onClick={() => saveAll()}
-            className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500 disabled:opacity-50"
+            className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save goals"}
           </button>
           {mode === "onboarding" && (
-            <Link href="/onboarding/scan" className="text-sm text-zinc-400 hover:text-zinc-200">
+            <Link href="/onboarding/scan" className="text-sm text-muted-foreground hover:text-foreground">
               Continue
             </Link>
           )}

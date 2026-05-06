@@ -83,7 +83,7 @@ export function OnboardingAccountsClient({
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Accounts</h1>
-        <p className="text-zinc-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           {mode === "settings"
             ? "Set account type and primary account. These preferences shape the Brief and onboarding scans."
             : "Include all accounts by default. You can re-run onboarding later after adding more."}
@@ -91,14 +91,14 @@ export function OnboardingAccountsClient({
       </div>
 
       {dbWarning && (
-        <div className="rounded-xl border border-amber-800 bg-amber-950/20 p-4 text-sm text-amber-200">
-          <div className="font-medium">Setup required</div>
-          <div className="text-amber-200/80 mt-1">{dbWarning}</div>
+        <div className="rounded-2xl border border-border/10 bg-surface/60 p-4 text-sm text-muted-foreground shadow-soft">
+          <div className="font-medium text-foreground">Setup required</div>
+          <div className="text-muted-foreground mt-1">{dbWarning}</div>
         </div>
       )}
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 text-sm text-zinc-400">
-        Included in this scan: <strong className="text-zinc-200">{includedCount}</strong> /{" "}
+      <div className="rounded-2xl border border-border/10 bg-surface/60 p-4 text-sm text-muted-foreground shadow-soft">
+        Included in this scan: <strong className="text-foreground">{includedCount}</strong> /{" "}
         {rows.length}
       </div>
 
@@ -106,17 +106,17 @@ export function OnboardingAccountsClient({
         {rows.map((r) => (
           <div
             key={r.googleAccountId}
-            className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4"
+            className="rounded-2xl border border-border/10 bg-surface/60 p-4 shadow-soft"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="font-medium text-zinc-200">{r.email}</div>
-                <div className="text-xs text-zinc-500 mt-1">
+                <div className="font-medium text-foreground">{r.email}</div>
+                <div className="text-xs text-muted-foreground mt-1">
                   {r.label ? `Label: ${r.label}` : "No label"}
                   {r.stored ? " · Saved" : " · Not saved yet"}
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm text-zinc-300">
+              <label className="flex items-center gap-2 text-sm text-foreground/90">
                 <input
                   type="checkbox"
                   checked={r.includeInOnboarding}
@@ -130,10 +130,10 @@ export function OnboardingAccountsClient({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-              <label className="text-xs text-zinc-500">
+              <label className="text-xs text-muted-foreground">
                 Account type
                 <select
-                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200"
+                  className="mt-1 w-full rounded-xl border border-border/10 bg-background px-3 py-2 text-sm text-foreground"
                   value={r.accountType}
                   disabled={savingId !== null}
                   onChange={(e) =>
@@ -146,10 +146,10 @@ export function OnboardingAccountsClient({
                 </select>
               </label>
 
-              <label className="text-xs text-zinc-500">
+              <label className="text-xs text-muted-foreground">
                 Display name (optional)
                 <input
-                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200"
+                  className="mt-1 w-full rounded-xl border border-border/10 bg-background px-3 py-2 text-sm text-foreground"
                   defaultValue={r.displayName ?? ""}
                   disabled={savingId !== null}
                   onBlur={(e) =>
@@ -158,14 +158,14 @@ export function OnboardingAccountsClient({
                 />
               </label>
 
-              <label className="text-xs text-zinc-500">
+              <label className="text-xs text-muted-foreground">
                 Primary
                 <div className="mt-2">
                   <button
                     type="button"
                     disabled={savingId !== null || r.isPrimary}
                     onClick={() => save(r.googleAccountId, { isPrimary: true })}
-                    className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                    className="rounded-xl border border-border/10 bg-surface/50 px-3 py-2 text-sm text-foreground hover:bg-surface2/60 disabled:opacity-50"
                   >
                     {r.isPrimary ? "Primary" : "Set primary"}
                   </button>
@@ -181,16 +181,16 @@ export function OnboardingAccountsClient({
           <>
             <Link
               href="/onboarding/goals"
-              className="inline-block rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+              className="inline-block rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
             >
               Continue
             </Link>
-            <Link href="/settings/accounts" className="text-sm text-zinc-400 hover:text-zinc-200">
+            <Link href="/settings/accounts" className="text-sm text-muted-foreground hover:text-foreground">
               Add another account
             </Link>
           </>
         ) : (
-          <Link href="/settings/accounts" className="text-sm text-zinc-400 hover:text-zinc-200">
+          <Link href="/settings/accounts" className="text-sm text-muted-foreground hover:text-foreground">
             Manage connected accounts →
           </Link>
         )}

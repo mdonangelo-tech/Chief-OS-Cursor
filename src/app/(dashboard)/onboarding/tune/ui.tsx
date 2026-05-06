@@ -56,22 +56,22 @@ export function OnboardingTuneClient({
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Tune</h1>
-        <p className="text-zinc-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           A few quick questions to make the scan more accurate.
         </p>
-        <p className="text-xs text-zinc-500 mt-2">
-          Run: <span className="text-zinc-300">{runId}</span> · Status:{" "}
-          <span className="text-zinc-300">{status}</span>
+        <p className="text-xs text-muted-foreground mt-2">
+          Run: <span className="text-foreground/90">{runId}</span> · Status:{" "}
+          <span className="text-foreground/90">{status}</span>
         </p>
       </div>
 
       {qs.length === 0 ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 text-sm text-zinc-400">
+        <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 text-sm text-muted-foreground shadow-soft">
           No questions needed right now.
           <div className="mt-4">
             <Link
               href={`/onboarding/insights`}
-              className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+              className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
             >
               Continue
             </Link>
@@ -80,14 +80,14 @@ export function OnboardingTuneClient({
       ) : (
         <div className="space-y-4">
           {qs.slice(0, 5).map((q) => (
-            <div key={q.id} className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5">
-              <div className="font-medium text-zinc-200">{q.title ?? "Question"}</div>
-              <div className="text-sm text-zinc-400 mt-1">{q.prompt ?? ""}</div>
+            <div key={q.id} className="rounded-2xl border border-border/10 bg-surface/60 p-5 shadow-soft">
+              <div className="font-medium text-foreground">{q.title ?? "Question"}</div>
+              <div className="text-sm text-muted-foreground mt-1">{q.prompt ?? ""}</div>
 
               {q.kind === "single_select" && Array.isArray(q.options) && (
                 <div className="mt-3 space-y-2">
                   {q.options.map((o) => (
-                    <label key={o.id} className="flex items-center gap-2 text-sm text-zinc-300">
+                    <label key={o.id} className="flex items-center gap-2 text-sm text-foreground/90">
                       <input
                         type="radio"
                         name={q.id}
@@ -108,7 +108,7 @@ export function OnboardingTuneClient({
               {q.kind === "free_text" && (
                 <div className="mt-3">
                   <input
-                    className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200"
+                    className="w-full rounded-xl border border-border/10 bg-background px-3 py-2 text-sm text-foreground"
                     placeholder="Type your answer…"
                     onChange={(e) =>
                       setAnswers((a) => ({
@@ -120,7 +120,7 @@ export function OnboardingTuneClient({
                 </div>
               )}
 
-              <label className="mt-3 flex items-center gap-2 text-xs text-zinc-400">
+              <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                 <input
                   type="checkbox"
                   defaultChecked={q.applyToAllDefault ?? true}
@@ -145,11 +145,11 @@ export function OnboardingTuneClient({
               type="button"
               disabled={saving}
               onClick={save}
-              className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500 disabled:opacity-50"
+              className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save answers"}
             </button>
-            <Link href="/onboarding/insights" className="text-sm text-zinc-400 hover:text-zinc-200">
+            <Link href="/onboarding/insights" className="text-sm text-muted-foreground hover:text-foreground">
               Continue
             </Link>
           </div>

@@ -76,7 +76,7 @@ export function OnboardingRecommendationsClient({
   }
 
   if (recs.length === 0) {
-    return <div className="text-sm text-zinc-500">No actions to apply.</div>;
+    return <div className="text-sm text-muted-foreground">No actions to apply.</div>;
   }
 
   return (
@@ -86,13 +86,13 @@ export function OnboardingRecommendationsClient({
         return (
           <div
             key={r.actionId}
-            className="rounded-xl border border-zinc-800 bg-zinc-950/30 p-4"
+            className="rounded-2xl border border-border/10 bg-surface/60 p-4 shadow-soft"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="font-medium text-zinc-200">{r.title}</div>
-                <div className="text-sm text-zinc-400 mt-1">{r.reason}</div>
-                <div className="text-xs text-zinc-600 mt-2">Action: {r.actionId}</div>
+                <div className="font-medium text-foreground">{r.title}</div>
+                <div className="text-sm text-muted-foreground mt-1">{r.reason}</div>
+                <div className="text-xs text-muted-foreground/80 mt-2">Action: {r.actionId}</div>
               </div>
               <div className="flex flex-col items-end gap-2">
                 {r.applied ? (
@@ -102,7 +102,7 @@ export function OnboardingRecommendationsClient({
                     type="button"
                     disabled={loadingId !== null}
                     onClick={() => apply(r.actionId)}
-                    className="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white font-medium hover:bg-amber-500 disabled:opacity-50"
+                    className="rounded-xl bg-accent px-4 py-2 text-sm text-accent-foreground font-medium hover:opacity-90 disabled:opacity-50"
                   >
                     {loadingId === r.actionId ? "Applying…" : "Apply"}
                   </button>
@@ -110,7 +110,7 @@ export function OnboardingRecommendationsClient({
                 {preview && (
                   <a
                     href={preview.href}
-                    className="text-xs text-zinc-400 hover:text-zinc-200 underline decoration-dotted"
+                    className="text-xs text-muted-foreground hover:text-foreground underline decoration-dotted"
                   >
                     {preview.label}
                   </a>

@@ -54,41 +54,41 @@ export default async function OnboardingInsightsPage() {
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Insights</h1>
-        <p className="text-zinc-400 mt-1">Your operator report (v1).</p>
+        <p className="text-muted-foreground mt-1">Your operator report (v1).</p>
         {run && (
-          <p className="text-xs text-zinc-500 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             Run {run.id} · {run.status} · {run.createdAt.toLocaleString()}
           </p>
         )}
       </div>
 
       {!run ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 text-sm text-zinc-400">
+        <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 text-sm text-muted-foreground shadow-soft">
           No scan found yet. Start one first.
           <div className="mt-4">
             <Link
               href="/onboarding/scan"
-              className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+              className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
             >
               Go to Scan
             </Link>
           </div>
         </div>
       ) : run.status !== "complete" ? (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 text-sm text-zinc-400">
+        <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 text-sm text-muted-foreground shadow-soft">
           Scan is {run.status}. Keep it running on the Scan step.
           {run.error && <div className="mt-2 text-red-300">Error: {run.error}</div>}
           <div className="mt-4 flex gap-3">
             <Link
               href={`/onboarding/scan?runId=${encodeURIComponent(run.id)}`}
-              className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+              className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
             >
               Back to Scan
             </Link>
             {Array.isArray(run.questionsJson) && run.questionsJson.length > 0 && (
               <Link
                 href={`/onboarding/tune?runId=${encodeURIComponent(run.id)}`}
-                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+                className="rounded-xl border border-border/10 bg-surface/50 px-4 py-2 text-sm text-foreground hover:bg-surface2/60"
               >
                 Answer questions
               </Link>
@@ -97,46 +97,46 @@ export default async function OnboardingInsightsPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 space-y-2">
-            <div className="text-xs text-zinc-500">Top 3</div>
-            <ul className="text-sm text-zinc-200 space-y-1 list-disc pl-5">
+          <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 space-y-2 shadow-soft">
+            <div className="text-xs text-muted-foreground">Top 3</div>
+            <ul className="text-sm text-foreground space-y-1 list-disc pl-5">
               {(topInsights.length ? topInsights : ["Scan complete."]).slice(0, 3).map((t) => (
                 <li key={t}>{t}</li>
               ))}
             </ul>
           </div>
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 space-y-3">
+          <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 space-y-3 shadow-soft">
             <h2 className="text-lg font-medium">Inbox reality</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-zinc-300">
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                <div className="text-xs text-zinc-500">Inbox (30d)</div>
-                <div className="text-lg font-semibold text-zinc-200">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-foreground/90">
+              <div className="rounded-2xl border border-border/10 bg-surface/40 p-3">
+                <div className="text-xs text-muted-foreground">Inbox (30d)</div>
+                <div className="text-lg font-semibold text-foreground">
                   {emailStats?.totalInbox30d ?? "—"}
                 </div>
               </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                <div className="text-xs text-zinc-500">Unread (30d)</div>
-                <div className="text-lg font-semibold text-zinc-200">
+              <div className="rounded-2xl border border-border/10 bg-surface/40 p-3">
+                <div className="text-xs text-muted-foreground">Unread (30d)</div>
+                <div className="text-lg font-semibold text-foreground">
                   {emailStats?.unreadInbox30d ?? "—"}
                 </div>
               </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                <div className="text-xs text-zinc-500">Sample size</div>
-                <div className="text-lg font-semibold text-zinc-200">
+              <div className="rounded-2xl border border-border/10 bg-surface/40 p-3">
+                <div className="text-xs text-muted-foreground">Sample size</div>
+                <div className="text-lg font-semibold text-foreground">
                   {emailStats?.sampleSize ?? "—"}
                 </div>
               </div>
             </div>
 
             {topDomains.length > 0 && (
-              <div className="text-sm text-zinc-400">
-                <div className="text-xs text-zinc-500 mb-1">Top domains (sample)</div>
+              <div className="text-sm text-muted-foreground">
+                <div className="text-xs text-muted-foreground mb-1">Top domains (sample)</div>
                 <div className="flex flex-wrap gap-2">
                   {topDomains.slice(0, 10).map((d: any) => (
                     <span
                       key={d.domain}
-                      className="rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1 text-xs text-zinc-300"
+                      className="rounded-full border border-border/10 bg-surface/50 px-3 py-1 text-xs text-foreground/90"
                     >
                       {d.domain} · {d.count}
                     </span>
@@ -146,32 +146,32 @@ export default async function OnboardingInsightsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 space-y-3">
+          <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 space-y-3 shadow-soft">
             <h2 className="text-lg font-medium">Calendar reality</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-zinc-300">
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                <div className="text-xs text-zinc-500">Busy hours (sample)</div>
-                <div className="text-lg font-semibold text-zinc-200">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-foreground/90">
+              <div className="rounded-2xl border border-border/10 bg-surface/40 p-3">
+                <div className="text-xs text-muted-foreground">Busy hours (sample)</div>
+                <div className="text-lg font-semibold text-foreground">
                   {calendarStats?.totalBusyMinutesSampled != null
                     ? Math.round((calendarStats.totalBusyMinutesSampled / 60) * 10) / 10
                     : "—"}
                 </div>
               </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                <div className="text-xs text-zinc-500">Meetings (sample)</div>
-                <div className="text-lg font-semibold text-zinc-200">
+              <div className="rounded-2xl border border-border/10 bg-surface/40 p-3">
+                <div className="text-xs text-muted-foreground">Meetings (sample)</div>
+                <div className="text-lg font-semibold text-foreground">
                   {calendarStats?.meetingsSampled ?? "—"}
                 </div>
               </div>
-              <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                <div className="text-xs text-zinc-500">Solo events (sample)</div>
-                <div className="text-lg font-semibold text-zinc-200">
+              <div className="rounded-2xl border border-border/10 bg-surface/40 p-3">
+                <div className="text-xs text-muted-foreground">Solo events (sample)</div>
+                <div className="text-lg font-semibold text-foreground">
                   {calendarStats?.soloEventsSampled ?? "—"}
                 </div>
               </div>
             </div>
             {Array.isArray(calendarStats?.uncertainClusters) && calendarStats.uncertainClusters.length > 0 && (
-              <div className="text-xs text-zinc-500">
+              <div className="text-xs text-muted-foreground">
                 Uncertainty clusters:{" "}
                 {calendarStats.uncertainClusters
                   .slice(0, 5)
@@ -182,16 +182,16 @@ export default async function OnboardingInsightsPage() {
           </div>
 
           {unsub.length > 0 && (
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 space-y-3">
+            <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 space-y-3 shadow-soft">
               <h2 className="text-lg font-medium">Noise to remove (suggested)</h2>
-              <p className="text-sm text-zinc-400">
+              <p className="text-sm text-muted-foreground">
                 v1 shows unsubscribe candidates. Apply automation comes next.
               </p>
-              <ul className="text-sm text-zinc-300 space-y-2">
+              <ul className="text-sm text-foreground/90 space-y-2">
                 {unsub.slice(0, 8).map((u: any, idx: number) => (
-                  <li key={`${u.from}-${idx}`} className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-                    <div className="font-medium text-zinc-200">{u.domain ?? u.from}</div>
-                    <div className="text-xs text-zinc-500 mt-1">{u.reason}</div>
+                  <li key={`${u.from}-${idx}`} className="rounded-2xl border border-border/10 bg-surface/40 p-3">
+                    <div className="font-medium text-foreground">{u.domain ?? u.from}</div>
+                    <div className="text-xs text-muted-foreground mt-1">{u.reason}</div>
                   </li>
                 ))}
               </ul>
@@ -202,7 +202,7 @@ export default async function OnboardingInsightsPage() {
             {Array.isArray(run.questionsJson) && run.questionsJson.length > 0 && (
               <Link
                 href={`/onboarding/tune?runId=${encodeURIComponent(run.id)}`}
-                className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+                className="rounded-xl border border-border/10 bg-surface/50 px-4 py-2 text-sm text-foreground hover:bg-surface2/60"
               >
                 Review questions
               </Link>
@@ -210,22 +210,22 @@ export default async function OnboardingInsightsPage() {
             <form action="/onboarding/finish" method="post">
               <button
                 type="submit"
-                className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-700"
+                className="rounded-xl bg-surface2/70 px-4 py-2 text-sm text-foreground hover:opacity-90"
               >
                 Finish
               </button>
             </form>
             <Link
               href="/brief"
-              className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+              className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
             >
               Go to Brief
             </Link>
           </div>
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 space-y-3">
+          <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 space-y-3 shadow-soft">
             <h2 className="text-lg font-medium">Recommended actions</h2>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Apply is reversible and recorded to this run’s undo snapshot.
             </p>
             <OnboardingRecommendationsClient runId={run.id} initialRecommendations={recommendations} />

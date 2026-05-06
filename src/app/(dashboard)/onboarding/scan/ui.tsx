@@ -111,15 +111,15 @@ export function OnboardingScanClient({ initialRunId }: { initialRunId: string | 
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Scan</h1>
-        <p className="text-zinc-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           We’ll scan the last 30 days across email + calendar (all included accounts by default).
         </p>
       </div>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 space-y-3">
-        <div className="text-sm text-zinc-400">
+      <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 space-y-3 shadow-soft">
+        <div className="text-sm text-muted-foreground">
           Status:{" "}
-          <strong className="text-zinc-200">
+          <strong className="text-foreground">
             {phase === "idle"
               ? "Not started"
               : phase === "queued"
@@ -133,11 +133,11 @@ export function OnboardingScanClient({ initialRunId }: { initialRunId: string | 
         </div>
 
         {progressMessage && (
-          <div className="text-sm text-zinc-400">{progressMessage}</div>
+          <div className="text-sm text-muted-foreground">{progressMessage}</div>
         )}
 
         {run && (
-          <div className="text-xs text-zinc-500 space-y-1">
+          <div className="text-xs text-muted-foreground space-y-1">
             <div>Run ID: {run.id}</div>
             <div>Accounts in run: {run.accountIds.length}</div>
             {run.completedAt && <div>Completed: {new Date(run.completedAt).toLocaleString()}</div>}
@@ -150,7 +150,7 @@ export function OnboardingScanClient({ initialRunId }: { initialRunId: string | 
               type="button"
               onClick={startRun}
               disabled={loading !== null}
-              className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500 disabled:opacity-50"
+              className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90 disabled:opacity-50"
             >
               {loading === "start" ? "Starting…" : "Start scan"}
             </button>
@@ -159,7 +159,7 @@ export function OnboardingScanClient({ initialRunId }: { initialRunId: string | 
               type="button"
               onClick={() => fetchRun(runId)}
               disabled={loading !== null}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-xl border border-border/10 bg-surface/50 px-4 py-2 text-sm text-foreground hover:bg-surface2/60 disabled:opacity-50"
             >
               {loading === "poll" ? "Refreshing…" : "Refresh"}
             </button>
@@ -167,20 +167,20 @@ export function OnboardingScanClient({ initialRunId }: { initialRunId: string | 
 
           <Link
             href="/onboarding/goals"
-            className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+            className="rounded-xl border border-border/10 bg-surface/50 px-4 py-2 text-sm text-foreground hover:bg-surface2/60"
           >
             Back
           </Link>
 
           <Link
             href={runId ? `/onboarding/tune?runId=${encodeURIComponent(runId)}` : "/onboarding/insights"}
-            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-700"
+            className="rounded-xl bg-surface2/70 px-4 py-2 text-sm text-foreground hover:opacity-90"
           >
             Continue
           </Link>
         </div>
 
-        <div className="text-xs text-zinc-500">
+        <div className="text-xs text-muted-foreground">
           Keep this tab open while it runs. This is a cooperative poll-driven job (serverless-friendly).
         </div>
       </div>
