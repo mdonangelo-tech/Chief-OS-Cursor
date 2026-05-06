@@ -100,7 +100,6 @@ export function BriefContent({ payload }: { payload: BriefPayload }) {
 
       <DeclutterSection
         summary={payload.digest.summary}
-        groups={payload.digest.groups}
       />
     </div>
   );

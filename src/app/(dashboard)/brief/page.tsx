@@ -32,7 +32,7 @@ export default async function BriefPage() {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-semibold">Morning Brief</h1>
+          <h1 className="text-2xl font-semibold">Brief</h1>
           <p className="text-zinc-400 mt-1">Welcome, {firstName(session.user)}.</p>
         </div>
         <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 p-6">
@@ -62,7 +62,7 @@ export default async function BriefPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Morning Brief</h1>
+        <h1 className="text-2xl font-semibold">Brief</h1>
         <p className="text-zinc-400 mt-1">Welcome, {firstName(session.user)}. 2–3 min scan.</p>
         <BriefHeader
           syncStatus={payload.syncStatus}

@@ -219,7 +219,7 @@ export default async function OnboardingInsightsPage() {
               href="/brief"
               className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
             >
-              Go to Morning Brief
+              Go to Brief
             </Link>
           </div>
 

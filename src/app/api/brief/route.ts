@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 /**
  * GET /api/brief
- * Returns structured brief payload for the Morning Brief page.
+ * Returns structured brief payload for the Brief page.
  * Frontend must use this; do not query raw tables.
  */
 export async function GET() {
