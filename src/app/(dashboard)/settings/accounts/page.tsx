@@ -51,7 +51,7 @@ export default async function AccountsPage({
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Connected Accounts</h1>
-        <p className="text-zinc-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           Connect Google accounts for Gmail and Calendar
         </p>
       </div>
@@ -105,37 +105,37 @@ export default async function AccountsPage({
               return (
                 <li
                   key={acc.id}
-                  className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3"
+                  className="rounded-2xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <span className="font-medium">{acc.email}</span>
                       {acc.userDefinedLabel && (
-                        <span className="ml-2 text-zinc-500 text-sm">
+                        <span className="ml-2 text-muted-foreground text-sm">
                           ({acc.userDefinedLabel})
                         </span>
                       )}
                       {syncState?.lastSyncAt && (
-                        <span className="ml-2 text-zinc-600 text-xs">
+                        <span className="ml-2 text-muted-foreground/80 text-xs">
                           last sync <LocalTime value={syncState.lastSyncAt} />
                         </span>
                       )}
                       {needsReconnect && (
-                        <span className="ml-2 text-red-400 text-xs">
+                        <span className="ml-2 text-danger text-xs">
                           reconnect required
                         </span>
                       )}
                       {hasSomeErrors && (
-                        <div className="mt-2 text-xs text-amber-200 space-y-1">
+                        <div className="mt-2 text-xs text-muted-foreground space-y-1">
                           {gmailErrs.length > 0 && (
                             <div>
-                              <span className="text-amber-300">Gmail:</span>{" "}
+                              <span className="text-accent">Gmail:</span>{" "}
                               {gmailErrs.join(" · ")}
                             </div>
                           )}
                           {calErrs.length > 0 && (
                             <div>
-                              <span className="text-amber-300">Calendar:</span>{" "}
+                              <span className="text-accent">Calendar:</span>{" "}
                               {calErrs.join(" · ")}
                             </div>
                           )}
@@ -146,8 +146,8 @@ export default async function AccountsPage({
                       href="/api/connect-google?returnTo=/settings/accounts"
                       className={
                         needsReconnect
-                          ? "text-sm text-amber-400 hover:text-amber-300"
-                          : "text-sm text-zinc-500 hover:text-zinc-300"
+                          ? "text-sm text-accent hover:text-accent/80"
+                          : "text-sm text-muted-foreground hover:text-foreground"
                       }
                     >
                       Reconnect
@@ -162,8 +162,8 @@ export default async function AccountsPage({
           <SyncButtons />
         )}
         {googleAccounts.length > 0 && (
-          <div className="text-sm text-zinc-500">
-            <Link href="/settings/accounts/preferences" className="text-amber-500 hover:underline">
+          <div className="text-sm text-muted-foreground">
+            <Link href="/settings/accounts/preferences" className="text-accent hover:underline">
               Account preferences →
             </Link>
           </div>
@@ -171,22 +171,22 @@ export default async function AccountsPage({
         {hasGoogleConfig ? (
           <a
             href="/api/connect-google"
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-600 px-4 py-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
+            className="inline-flex items-center gap-2 rounded-xl border border-border/10 bg-surface/50 px-4 py-2 text-foreground hover:bg-surface2/60"
           >
             {googleAccounts.length === 0
               ? "Connect Google account"
               : "Connect another Google account"}
           </a>
         ) : (
-          <p className="text-zinc-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             Configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env to
             connect Google accounts.
           </p>
         )}
       </section>
 
-      <p className="text-zinc-500 text-sm">
-        <Link href="/brief" className="hover:text-zinc-400">
+      <p className="text-muted-foreground text-sm">
+        <Link href="/brief" className="hover:text-foreground">
           ← Back to Brief
         </Link>
       </p>

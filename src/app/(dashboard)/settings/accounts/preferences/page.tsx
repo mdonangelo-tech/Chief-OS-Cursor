@@ -56,8 +56,8 @@ export default async function AccountPreferencesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="text-sm text-zinc-500">
-        <Link href="/settings/accounts" className="hover:text-zinc-400">
+      <div className="text-sm text-muted-foreground">
+        <Link href="/settings/accounts" className="hover:text-foreground">
           ← Back to Accounts
         </Link>
       </div>

@@ -41,7 +41,7 @@ export function SyncButtons() {
         type="button"
         onClick={() => handleSync()}
         disabled={disabled}
-        className="inline-flex rounded-lg border border-zinc-600 px-4 py-2 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex rounded-xl border border-border/10 bg-surface/50 px-4 py-2 text-foreground hover:bg-surface2/60 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {syncing === "all" ? "Syncing…" : "Sync Gmail + Calendar"}
       </button>
@@ -49,7 +49,7 @@ export function SyncButtons() {
         href="/api/google/health"
         target="_blank"
         rel="noopener noreferrer"
-        className="text-zinc-500 hover:text-zinc-300 text-sm"
+        className="text-muted-foreground hover:text-foreground text-sm"
       >
         Test connection
       </a>
