@@ -30,12 +30,38 @@ function extractDomain(fromHeader: string): string | null {
 export default async function DeclutterPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; import?: string }>;
+  searchParams: Promise<{
+    saved?: string;
+    import?: string;
+    ruleError?: string;
+    q?: string;
+    ruleType?: string;
+    rulesSort?: string;
+    rulesPage?: string;
+    rulesPageSize?: string;
+  }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) return null;
 
   const params = await searchParams;
+  const ruleError = typeof params.ruleError === "string" ? params.ruleError : null;
+
+  const ruleQ = typeof params.q === "string" ? params.q.trim() : "";
+  const ruleTypeRaw = typeof params.ruleType === "string" ? params.ruleType : "all";
+  const ruleType: "all" | "person" | "org" =
+    ruleTypeRaw === "person" || ruleTypeRaw === "org" ? ruleTypeRaw : "all";
+  const rulesSortRaw = typeof params.rulesSort === "string" ? params.rulesSort : "recent";
+  const rulesSort: "recent" | "alpha" | "category" =
+    rulesSortRaw === "alpha" || rulesSortRaw === "category" ? rulesSortRaw : "recent";
+  const rulesPage = Math.max(1, parseInt(params.rulesPage ?? "1", 10) || 1);
+  const rulesPageSizeRaw = typeof params.rulesPageSize === "string" ? params.rulesPageSize : "10";
+  const rulesPageSize =
+    rulesPageSizeRaw === "all"
+      ? "all"
+      : Math.min(50, Math.max(10, parseInt(rulesPageSizeRaw, 10) || 10));
+  const rulesTake = ruleType === "all" ? 10 : rulesPageSize === "all" ? 200 : rulesPageSize;
+  const rulesSkip = ruleType === "all" ? 0 : (rulesPage - 1) * rulesTake;
 
   type GmailLabelsByAccountRow =
     | { accountId: string; accountEmail: string; labels: GmailLabelInfo[] }
@@ -48,6 +74,8 @@ export default async function DeclutterPage({
   let categoryRules: any[] = [];
   let personRules: any[] = [];
   let orgRules: any[] = [];
+  let personRuleCount = 0;
+  let orgRuleCount = 0;
   let suggestedEvents: any[] = [];
   let rejected: any[] = [];
   let gmailLabelsByAccount: GmailLabelsByAccountRow[] | null = null;
@@ -65,6 +93,8 @@ export default async function DeclutterPage({
       categoryRules,
       personRules,
       orgRules,
+      personRuleCount,
+      orgRuleCount,
       suggestedEvents,
       rejected,
       gmailLabelsByAccount,
@@ -79,16 +109,56 @@ export default async function DeclutterPage({
         where: { userId: session.user.id },
         include: { category: true },
       }),
-      prisma.personRule.findMany({
-        where: { userId: session.user.id },
-        include: { category: true },
-        orderBy: { updatedAt: "desc" },
-      }),
-      prisma.orgRule.findMany({
-        where: { userId: session.user.id },
-        include: { category: true },
-        orderBy: { updatedAt: "desc" },
-      }),
+      ruleType === "org"
+        ? Promise.resolve([])
+        : prisma.personRule.findMany({
+            where: {
+              userId: session.user.id,
+              ...(ruleQ ? { email: { contains: ruleQ, mode: "insensitive" as const } } : {}),
+            },
+            include: { category: true },
+            orderBy:
+              rulesSort === "alpha"
+                ? { email: "asc" }
+                : rulesSort === "category"
+                  ? { category: { name: "asc" } }
+                  : { updatedAt: "desc" },
+            take: rulesTake,
+            skip: rulesSkip,
+          }),
+      ruleType === "person"
+        ? Promise.resolve([])
+        : prisma.orgRule.findMany({
+            where: {
+              userId: session.user.id,
+              ...(ruleQ ? { domain: { contains: ruleQ, mode: "insensitive" as const } } : {}),
+            },
+            include: { category: true },
+            orderBy:
+              rulesSort === "alpha"
+                ? { domain: "asc" }
+                : rulesSort === "category"
+                  ? { category: { name: "asc" } }
+                  : { updatedAt: "desc" },
+            take: rulesTake,
+            skip: rulesSkip,
+          }),
+      ruleType === "org"
+        ? Promise.resolve(0)
+        : prisma.personRule.count({
+            where: {
+              userId: session.user.id,
+              ...(ruleQ ? { email: { contains: ruleQ, mode: "insensitive" as const } } : {}),
+            },
+          }),
+      ruleType === "person"
+        ? Promise.resolve(0)
+        : prisma.orgRule.count({
+            where: {
+              userId: session.user.id,
+              ...(ruleQ ? { domain: { contains: ruleQ, mode: "insensitive" as const } } : {}),
+            },
+          }),
       prisma.emailEvent.findMany({
         where: {
           googleAccountId: { in: accountIds },
@@ -208,6 +278,11 @@ export default async function DeclutterPage({
         {params.saved === "rule" && (
           <div className="mt-2 rounded-lg bg-emerald-950/50 border border-emerald-800 px-3 py-2 text-emerald-300 text-sm">
             Category rule saved
+          </div>
+        )}
+        {ruleError && (
+          <div className="mt-2 rounded-lg bg-red-950/50 border border-red-800 px-3 py-2 text-red-300 text-sm">
+            {ruleError}
           </div>
         )}
         <p className="text-zinc-400 mt-1">
@@ -455,7 +530,86 @@ export default async function DeclutterPage({
             <p className="text-zinc-500 text-sm mt-1">No rules to review. Your queue is empty.</p>
           </div>
         )}
-        <h3 className="text-base font-medium text-zinc-300 mt-6">Sender rules</h3>
+        <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="text-base font-medium text-zinc-300">Rules</h3>
+            <div className="text-xs text-zinc-500 mt-1">
+              {ruleType === "all" ? (
+                <>
+                  Sender rules: {personRuleCount.toLocaleString()} · Domain rules: {orgRuleCount.toLocaleString()}
+                </>
+              ) : ruleType === "person" ? (
+                <>Sender rules: {personRuleCount.toLocaleString()}</>
+              ) : (
+                <>Domain rules: {orgRuleCount.toLocaleString()}</>
+              )}
+            </div>
+          </div>
+
+          <form method="get" className="flex flex-wrap items-center gap-2 text-sm">
+            <input type="hidden" name="import" value={params.import ?? ""} />
+            <label className="text-zinc-500">
+              Type{" "}
+              <select
+                name="ruleType"
+                defaultValue={ruleType}
+                className="ml-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-200"
+              >
+                <option value="all">All</option>
+                <option value="person">Sender</option>
+                <option value="org">Domain</option>
+              </select>
+            </label>
+            <label className="text-zinc-500">
+              Sort{" "}
+              <select
+                name="rulesSort"
+                defaultValue={rulesSort}
+                className="ml-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-200"
+              >
+                <option value="recent">Most recent</option>
+                <option value="alpha">Alphabetical</option>
+                <option value="category">Category</option>
+              </select>
+            </label>
+            <label className="text-zinc-500">
+              Show{" "}
+              <select
+                name="rulesPageSize"
+                defaultValue={rulesPageSizeRaw}
+                className="ml-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-200"
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="all">View all</option>
+              </select>
+            </label>
+            <input
+              name="q"
+              defaultValue={ruleQ}
+              placeholder="Search sender/domain…"
+              className="w-44 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-200 placeholder-zinc-600"
+            />
+            <input type="hidden" name="rulesPage" value="1" />
+            <button
+              type="submit"
+              className="rounded-lg border border-zinc-700 px-3 py-1 text-zinc-200 hover:bg-zinc-800"
+            >
+              Apply
+            </button>
+          </form>
+        </div>
+
+        {ruleType !== "all" && (
+          <div className="text-xs text-zinc-500">
+            Page {rulesPage}
+          </div>
+        )}
+
+        {ruleType !== "org" && (
+          <>
+            <h4 className="text-sm font-medium text-zinc-300">Sender rules</h4>
         {personRules.length === 0 ? (
           <p className="text-zinc-500 text-sm">No sender rules yet.</p>
         ) : (
@@ -473,7 +627,12 @@ export default async function DeclutterPage({
             ))}
           </ul>
         )}
-        <h3 className="text-base font-medium text-zinc-300 mt-6">Domain rules</h3>
+          </>
+        )}
+
+        {ruleType !== "person" && (
+          <>
+            <h4 className="text-sm font-medium text-zinc-300 mt-4">Domain rules</h4>
         {orgRules.length === 0 ? (
           <p className="text-zinc-500 text-sm">No domain rules yet.</p>
         ) : (
@@ -490,6 +649,8 @@ export default async function DeclutterPage({
               />
             ))}
           </ul>
+        )}
+          </>
         )}
       </section>
 

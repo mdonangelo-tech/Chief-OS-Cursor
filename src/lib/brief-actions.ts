@@ -362,3 +362,102 @@ export async function updateRuleCategory(formData: FormData) {
   revalidatePath("/settings/declutter");
   redirect("/settings/declutter#email-actions");
 }
+
+function safeReturnTo(formData: FormData, fallback: string): string {
+  const raw = formData.get("returnTo");
+  if (typeof raw !== "string") return fallback;
+  const v = raw.trim();
+  return v.startsWith("/") ? v : fallback;
+}
+
+function withRuleError(returnTo: string, message: string): string {
+  const [base, hash] = returnTo.split("#", 2);
+  const sep = base.includes("?") ? "&" : "?";
+  const next = `${base}${sep}ruleError=${encodeURIComponent(message)}`;
+  return hash ? `${next}#${hash}` : next;
+}
+
+export async function convertPersonRuleToDomain(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  const returnTo = safeReturnTo(formData, "/settings/declutter#email-actions");
+  const ruleId = (formData.get("ruleId") as string) ?? "";
+  if (!ruleId) return;
+
+  const rule = await prisma.personRule.findFirst({
+    where: { id: ruleId, userId: session.user.id },
+    select: { id: true, email: true, categoryId: true },
+  });
+  if (!rule) return;
+
+  const at = rule.email.lastIndexOf("@");
+  const domain = at >= 0 ? rule.email.slice(at + 1).toLowerCase().trim() : "";
+  if (!domain) {
+    redirect(withRuleError(returnTo, "Cannot infer domain from sender email."));
+  }
+
+  const existing = await prisma.orgRule.findUnique({
+    where: { userId_domain: { userId: session.user.id, domain } },
+    select: { id: true, categoryId: true },
+  });
+
+  if (existing && existing.categoryId !== rule.categoryId) {
+    redirect(withRuleError(returnTo, `Domain rule for ${domain} already exists with a different category.`));
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (!existing) {
+      await tx.orgRule.create({
+        data: { userId: session.user!.id!, domain, categoryId: rule.categoryId },
+      });
+    }
+    await tx.personRule.delete({ where: { id: rule.id } });
+  });
+
+  revalidatePath("/brief");
+  revalidatePath("/settings/declutter");
+  redirect(returnTo);
+}
+
+export async function convertDomainRuleToSender(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  const returnTo = safeReturnTo(formData, "/settings/declutter#email-actions");
+  const ruleId = (formData.get("ruleId") as string) ?? "";
+  const senderEmailRaw = formData.get("senderEmail");
+  const senderEmail = typeof senderEmailRaw === "string" ? senderEmailRaw.trim().toLowerCase() : "";
+  if (!ruleId || !senderEmail) return;
+
+  const rule = await prisma.orgRule.findFirst({
+    where: { id: ruleId, userId: session.user.id },
+    select: { id: true, domain: true, categoryId: true },
+  });
+  if (!rule) return;
+
+  const at = senderEmail.lastIndexOf("@");
+  const domain = at >= 0 ? senderEmail.slice(at + 1).toLowerCase().trim() : "";
+  if (!domain || domain !== rule.domain.toLowerCase()) {
+    redirect(withRuleError(returnTo, `Sender email must be within ${rule.domain}.`));
+  }
+
+  const existing = await prisma.personRule.findUnique({
+    where: { userId_email: { userId: session.user.id, email: senderEmail } },
+    select: { id: true, categoryId: true },
+  });
+  if (existing && existing.categoryId !== rule.categoryId) {
+    redirect(withRuleError(returnTo, `Sender rule for ${senderEmail} already exists with a different category.`));
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (!existing) {
+      await tx.personRule.create({
+        data: { userId: session.user!.id!, email: senderEmail, categoryId: rule.categoryId },
+      });
+    }
+    await tx.orgRule.delete({ where: { id: rule.id } });
+  });
+
+  revalidatePath("/brief");
+  revalidatePath("/settings/declutter");
+  redirect(returnTo);
+}

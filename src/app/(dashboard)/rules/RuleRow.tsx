@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { updateRuleCategory } from "@/lib/brief-actions";
+import { convertDomainRuleToSender, convertPersonRuleToDomain, updateRuleCategory } from "@/lib/brief-actions";
 
 interface Category {
   id: string;
@@ -34,6 +34,8 @@ export function RuleRow({
   categories,
 }: RuleRowProps) {
   const [editing, setEditing] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertSenderEmail, setConvertSenderEmail] = useState("");
   const [useNew, setUseNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [newParentId, setNewParentId] = useState("");
@@ -43,8 +45,8 @@ export function RuleRow({
   const currentCat = categories.find((c) => c.id === categoryId);
   if (!editing) {
     return (
-      <li className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm">
-        <span className="text-zinc-300 truncate">{label}</span>
+      <li className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm">
+        <span className="text-zinc-300 truncate min-w-0">{label}</span>
         <span className="text-zinc-500">→</span>
         <span className="text-zinc-400">
           {currentCat ? categoryLabel(currentCat) : "—"}
@@ -56,6 +58,56 @@ export function RuleRow({
         >
           Change
         </button>
+
+        <div className="ml-auto flex items-center gap-2">
+          {ruleType === "person" ? (
+            <form action={convertPersonRuleToDomain}>
+              <input type="hidden" name="ruleId" value={ruleId} />
+              <input type="hidden" name="returnTo" value="/settings/declutter#email-actions" />
+              <button type="submit" className="text-xs text-zinc-500 hover:text-zinc-300">
+                Convert → domain
+              </button>
+            </form>
+          ) : (
+            <>
+              {!convertOpen ? (
+                <button
+                  type="button"
+                  onClick={() => setConvertOpen(true)}
+                  className="text-xs text-zinc-500 hover:text-zinc-300"
+                >
+                  Convert → sender
+                </button>
+              ) : (
+                <form action={convertDomainRuleToSender} className="flex items-center gap-2">
+                  <input type="hidden" name="ruleId" value={ruleId} />
+                  <input type="hidden" name="returnTo" value="/settings/declutter#email-actions" />
+                  <input
+                    name="senderEmail"
+                    value={convertSenderEmail}
+                    onChange={(e) => setConvertSenderEmail(e.target.value)}
+                    placeholder="name@domain.com"
+                    className="w-44 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 placeholder-zinc-600"
+                    required
+                  />
+                  <button type="submit" className="text-xs text-amber-500 hover:text-amber-400">
+                    Convert
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConvertOpen(false);
+                      setConvertSenderEmail("");
+                    }}
+                    className="text-xs text-zinc-500 hover:text-zinc-300"
+                  >
+                    Cancel
+                  </button>
+                </form>
+              )}
+            </>
+          )}
+        </div>
       </li>
     );
   }

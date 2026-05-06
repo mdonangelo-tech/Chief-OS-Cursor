@@ -19,6 +19,7 @@ export function CategoryRuleRow({
   const [action, setAction] = useState(currentAction);
   const [days, setDays] = useState(currentArchiveAfterDays ?? 7);
   const [dirty, setDirty] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const markDirty = () => setDirty(true);
@@ -31,6 +32,8 @@ export function CategoryRuleRow({
       fd.set("noRedirect", "true");
       await upsertCategoryDeclutterRule(fd);
       setDirty(false);
+      setJustSaved(true);
+      window.setTimeout(() => setJustSaved(false), 2000);
     });
   };
 
@@ -89,9 +92,9 @@ export function CategoryRuleRow({
           >
             Update
           </button>
-        ) : (
-          <span className="text-sm text-emerald-500">✓ Saved</span>
-        )}
+        ) : justSaved ? (
+          <span className="text-sm text-emerald-500">Saved</span>
+        ) : null}
       </form>
       <form
         action={deleteCategory}
