@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { PreviewAutoArchiveResponse, RunAutoArchiveResponse } from "@/types/declutter";
 import { apiFetch } from "@/lib/api-base";
 
 export function AutoArchiveRunner() {
-  const [loading, setLoading] = useState<"preview" | "runPreview" | "run" | null>(null);
+  const [loading, setLoading] = useState<"preview" | "runPreview" | "run" | "runAll" | null>(null);
   const [preview, setPreview] = useState<PreviewAutoArchiveResponse | null>(null);
   const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
+  const stopAllRef = useRef(false);
 
   const blockedCount = preview?.protectedBlockedCount ?? 0;
   const requiresDoubleConfirm = (preview?.total ?? 0) > 200 || blockedCount > 0;
@@ -56,6 +57,42 @@ export function AutoArchiveRunner() {
     }
   }
 
+  async function runArchiveAll() {
+    setLoading("runAll");
+    stopAllRef.current = false;
+    try {
+      let totalProcessed = 0;
+      let remaining = preview?.total ?? null;
+      let batches = 0;
+      const MAX_BATCHES = 50; // safety: up to 50k per click
+
+      while (!stopAllRef.current && batches < MAX_BATCHES) {
+        const res = await apiFetch("/api/declutter/run-auto-archive", { method: "POST" });
+        const data = (await res.json()) as RunAutoArchiveResponse | { error?: string };
+        if (!res.ok || !("ok" in data)) throw new Error((data as any).error ?? "Failed");
+        totalProcessed += data.processed;
+        remaining = data.remainingEligible;
+        batches++;
+
+        if (data.processed === 0 || data.remainingEligible === 0) break;
+      }
+
+      showToast(
+        "success",
+        stopAllRef.current
+          ? `Archived ${totalProcessed}. Stopped with ${remaining ?? "?"} still eligible.`
+          : `Archived ${totalProcessed}. ${remaining ?? 0} still eligible — run again to continue.`
+      );
+      setConfirmOpen(false);
+      await fetchPreview("preview");
+    } catch (e) {
+      showToast("error", (e as Error).message);
+    } finally {
+      setLoading(null);
+      stopAllRef.current = false;
+    }
+  }
+
   function fmt(iso: string | null) {
     if (!iso) return "—";
     return new Date(iso).toLocaleString();
@@ -82,6 +119,15 @@ export function AutoArchiveRunner() {
           className="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
         >
           {loading === "run" ? "Archiving…" : loading === "runPreview" ? "Loading…" : "Archive next 1000"}
+        </button>
+        <button
+          type="button"
+          onClick={() => fetchPreview("run")}
+          disabled={loading !== null}
+          className="rounded-lg border border-amber-700 px-4 py-2 text-sm text-amber-200 hover:bg-amber-950/30 disabled:opacity-50"
+          title="Runs multiple 1000-email batches until done (or you stop)."
+        >
+          Archive all eligible
         </button>
       </div>
 
@@ -161,6 +207,9 @@ export function AutoArchiveRunner() {
                 <div className="text-zinc-500 text-xs mt-1">
                   This run will process up to <strong>1000</strong> emails.
                 </div>
+                <div className="text-zinc-600 text-xs mt-1">
+                  “Archive all eligible” will run multiple batches (up to 50) until none remain.
+                </div>
               </div>
               <button
                 type="button"
@@ -207,22 +256,47 @@ export function AutoArchiveRunner() {
               <button
                 type="button"
                 onClick={() => setConfirmOpen(false)}
-                disabled={loading === "run"}
+                disabled={loading === "run" || loading === "runAll"}
                 className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-900 disabled:opacity-50"
               >
                 Cancel
               </button>
+              {loading === "runAll" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    stopAllRef.current = true;
+                  }}
+                  className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+                >
+                  Stop
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={runArchive}
                 disabled={
                   loading === "run" ||
+                  loading === "runAll" ||
                   preview.total === 0 ||
                   (requiresDoubleConfirm && !confirmChecked)
                 }
                 className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
               >
                 {loading === "run" ? "Archiving…" : "Archive next 1000"}
+              </button>
+              <button
+                type="button"
+                onClick={runArchiveAll}
+                disabled={
+                  loading === "run" ||
+                  loading === "runAll" ||
+                  preview.total === 0 ||
+                  (requiresDoubleConfirm && !confirmChecked)
+                }
+                className="rounded-lg border border-amber-700 px-3 py-2 text-sm text-amber-200 hover:bg-amber-950/30 disabled:opacity-50"
+              >
+                {loading === "runAll" ? "Archiving all…" : "Archive all eligible"}
               </button>
             </div>
           </div>
