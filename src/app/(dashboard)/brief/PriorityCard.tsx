@@ -113,34 +113,34 @@ export function PriorityCard({
   }
 
   return (
-    <article className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-      <div className="font-medium text-zinc-200">{text(subject) || "(No subject)"}</div>
-      <div className="text-zinc-500 text-sm mt-1 flex flex-wrap items-center gap-2">
+    <article className="rounded-2xl border border-border/10 bg-surface/60 p-4 shadow-soft">
+      <div className="font-medium text-foreground">{text(subject) || "(No subject)"}</div>
+      <div className="text-muted-foreground text-sm mt-1 flex flex-wrap items-center gap-2">
         {text(from)}
-        <span className="inline-flex rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-400">
+        <span className="inline-flex rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
           {accountLabel}
         </span>
         {categoryName && (
-          <span className="inline-flex rounded bg-amber-900/50 px-1.5 py-0.5 text-xs text-amber-200">
+          <span className="inline-flex rounded bg-accent/15 px-1.5 py-0.5 text-xs text-accent">
             {categoryName}
           </span>
         )}
         {confidence != null && (
-          <span className="text-zinc-600">{Math.round(confidence * 100)}%</span>
+          <span className="text-muted-foreground/80">{Math.round(confidence * 100)}%</span>
         )}
         {actionType && (
-          <span className="text-zinc-500 italic">{actionLabel(actionType)}</span>
+          <span className="text-muted-foreground italic">{actionLabel(actionType)}</span>
         )}
       </div>
       {snippet && (
-        <p className="text-zinc-400 text-sm mt-2 line-clamp-1">{text(snippet)}</p>
+        <p className="text-muted-foreground text-sm mt-2 line-clamp-1">{text(snippet)}</p>
       )}
       <div className="flex flex-wrap items-center gap-2 mt-3">
         <a
           href={gmailUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-amber-500 hover:text-amber-400"
+          className="text-sm text-accent hover:text-accent/80"
         >
           Do now
         </a>
@@ -148,7 +148,7 @@ export function PriorityCard({
           type="button"
           disabled={saving}
           onClick={() => submitFeedback("not_important")}
-          className="text-sm text-zinc-500 hover:text-zinc-300 disabled:opacity-50"
+          className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           Not important
         </button>
@@ -156,7 +156,7 @@ export function PriorityCard({
           type="button"
           disabled={saving}
           onClick={() => submitFeedback("dismiss")}
-          className="text-sm text-zinc-500 hover:text-zinc-300 disabled:opacity-50"
+          className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           Dismiss
         </button>
@@ -164,14 +164,14 @@ export function PriorityCard({
           type="button"
           disabled={saving}
           onClick={() => setShowCategory((x) => !x)}
-          className="text-sm text-zinc-500 hover:text-zinc-300 disabled:opacity-50"
+          className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           Change category
         </button>
         <button
           type="button"
           onClick={() => setShowWhy((x) => !x)}
-          className="text-sm text-zinc-500 hover:text-zinc-400"
+          className="text-sm text-muted-foreground hover:text-foreground"
         >
           Why?
         </button>
@@ -181,7 +181,7 @@ export function PriorityCard({
           <select
             value={selectedCategoryId}
             onChange={(e) => setSelectedCategoryId(e.target.value)}
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-sm text-zinc-200"
+            className="rounded-xl border border-border/10 bg-background px-2 py-1 text-sm text-foreground"
           >
             <option value="">— Unset —</option>
             {categories
@@ -197,12 +197,12 @@ export function PriorityCard({
             type="button"
             disabled={saving}
             onClick={saveCategory}
-            className="rounded bg-amber-600 px-3 py-1 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-50"
+            className="rounded-xl bg-accent px-3 py-1 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50"
           >
             Save
           </button>
           {(categoryName || categoryId) && (
-            <span className="text-xs text-zinc-600">
+            <span className="text-xs text-muted-foreground/80">
               Current:{" "}
               {categoryId ? (categoryLabelById.get(categoryId) ?? categoryName ?? "—") : categoryName ?? "—"}
             </span>
@@ -211,7 +211,7 @@ export function PriorityCard({
       )}
       {error && <p className="text-xs text-red-300 mt-2">{error}</p>}
       {showWhy && reason && (
-        <div className="mt-2 rounded bg-zinc-800/50 px-3 py-2 text-xs text-zinc-400 italic">
+        <div className="mt-2 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground italic">
           {reason}
         </div>
       )}

@@ -63,15 +63,15 @@ export function TodayAtGlance({
     >
       <a
         href="#declutter"
-        className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 hover:border-amber-800/50 transition-colors block"
+        className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 hover:bg-surface2/60 hover:border-border/20 transition-colors block shadow-soft"
         title={inboxAccounts.map((a) => `${a.accountLabel || a.email}: ${a.messagesTotal} in inbox`).join(" · ")}
       >
-        <div className="text-2xl font-semibold text-zinc-200 tabular-nums">{totalInbox.toLocaleString()}</div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">
+        <div className="text-2xl font-semibold text-foreground tabular-nums">{totalInbox.toLocaleString()}</div>
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">
           Inbox{inboxAccounts.length > 1 ? ` (${inboxAccounts.length})` : ""}
         </div>
         {inboxAccounts.length > 1 && (
-          <div className="text-xs text-zinc-600 mt-1 space-y-0.5">
+          <div className="text-xs text-muted-foreground/80 mt-1 space-y-0.5">
             {inboxAccounts.map((a) => (
               <div key={a.email} className="truncate" title={`${a.messagesTotal} total, ${a.messagesUnread} unread`}>
                 {a.accountLabel || a.email.split("@")[0]}: {a.messagesTotal.toLocaleString()}
@@ -82,44 +82,44 @@ export function TodayAtGlance({
       </a>
       <a
         href="#priorities"
-        className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 hover:border-amber-800/50 transition-colors block"
+        className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 hover:bg-surface2/60 hover:border-border/20 transition-colors block shadow-soft"
       >
-        <div className="text-2xl font-semibold text-amber-500 tabular-nums">{prioritiesCount}</div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">Priorities</div>
+        <div className="text-2xl font-semibold text-accent tabular-nums">{prioritiesCount}</div>
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">Priorities</div>
       </a>
       <a
         href="#open-loops"
-        className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 hover:border-amber-800/50 transition-colors block"
+        className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 hover:bg-surface2/60 hover:border-border/20 transition-colors block shadow-soft"
       >
-        <div className="text-2xl font-semibold text-zinc-200 tabular-nums">{openLoopsCount}</div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">Open loops</div>
+        <div className="text-2xl font-semibold text-foreground tabular-nums">{openLoopsCount}</div>
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">Open loops</div>
       </a>
       <a
         href="#calendar"
-        className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 hover:border-amber-800/50 transition-colors block"
+        className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 hover:bg-surface2/60 hover:border-border/20 transition-colors block shadow-soft"
       >
-        <div className="text-lg font-medium text-zinc-200 truncate" title={nextMeeting?.title ?? undefined}>
+        <div className="text-lg font-medium text-foreground truncate" title={nextMeeting?.title ?? undefined}>
           {nextMeeting ? inMinutes(nextMeeting.inMinutes) : "—"}
         </div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">Next meeting</div>
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">Next meeting</div>
         {nextMeeting?.title && (
-          <div className="text-xs text-zinc-600 truncate mt-1">{nextMeeting.title}</div>
+          <div className="text-xs text-muted-foreground/80 truncate mt-1">{nextMeeting.title}</div>
         )}
       </a>
       <a
         href="#calendar"
-        className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 hover:border-amber-800/50 transition-colors block"
+        className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 hover:bg-surface2/60 hover:border-border/20 transition-colors block shadow-soft"
       >
-        <div className="text-sm font-medium text-zinc-300 truncate">{summary}</div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">Calendar</div>
+        <div className="text-sm font-medium text-foreground/90 truncate">{summary}</div>
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">Calendar</div>
       </a>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-        <div className="text-2xl font-semibold text-zinc-200 tabular-nums">{archivedLast24h}</div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">Archived 24h</div>
+      <div className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft">
+        <div className="text-2xl font-semibold text-foreground tabular-nums">{archivedLast24h}</div>
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">Archived 24h</div>
         {archivedLast24h > 0 && (
           <Link
             href="/audit"
-            className="text-xs text-amber-500 hover:text-amber-400 mt-1 block"
+            className="text-xs text-accent hover:text-accent/80 mt-1 block"
           >
             Undo
           </Link>

@@ -33,15 +33,15 @@ export default async function BriefPage() {
       <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-semibold">Brief</h1>
-          <p className="text-zinc-400 mt-1">Welcome, {firstName(session.user)}.</p>
+          <p className="text-muted-foreground mt-1">Welcome, {firstName(session.user)}.</p>
         </div>
-        <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 p-6">
-          <p className="text-zinc-300 mb-4">
+        <div className="rounded-2xl border border-border/10 bg-surface/60 p-6 shadow-soft">
+          <p className="text-foreground/90 mb-4">
             Connect a Google account to get your daily brief with Gmail and Calendar.
           </p>
           <Link
             href="/settings/accounts"
-            className="inline-flex rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+            className="inline-flex rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
           >
             Connect Google account
           </Link>
@@ -63,7 +63,7 @@ export default async function BriefPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Brief</h1>
-        <p className="text-zinc-400 mt-1">Welcome, {firstName(session.user)}. 2–3 min scan.</p>
+        <p className="text-muted-foreground mt-1">Welcome, {firstName(session.user)}. 2–3 min scan.</p>
         <BriefHeader
           syncStatus={payload.syncStatus}
           llmStatus={payload.llmStatus}
@@ -73,9 +73,9 @@ export default async function BriefPage() {
       <BriefContent payload={payload} />
 
       {!hasContent && (
-        <p className="text-zinc-500">
+        <p className="text-muted-foreground">
           No content yet.{" "}
-          <Link href="/settings/accounts" className="text-amber-500 hover:underline">
+          <Link href="/settings/accounts" className="text-accent hover:underline">
             Sync Gmail and Calendar
           </Link>{" "}
           to populate your brief.

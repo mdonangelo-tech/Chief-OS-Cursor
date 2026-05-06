@@ -30,14 +30,14 @@ export function BriefHeader({
   llmStatus: LlmStatus;
 }) {
   return (
-    <p className="text-zinc-500 text-sm mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+    <p className="text-muted-foreground text-sm mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
       <span>Synced: Gmail {minsAgo(syncStatus.gmailSyncAt)} · Calendar {minsAgo(syncStatus.calendarSyncAt)}</span>
       <span>· Accounts: {syncStatus.accountsCount}</span>
       <span>· LLM: {llmStatus.enabled ? `On (${llmStatus.provider})` : "Off"}</span>
       {syncStatus.hasSyncErrors && (
         <Link
           href="/settings/accounts"
-          className="text-amber-500 hover:text-amber-400"
+          className="text-accent hover:text-accent/80"
           title="Sync errors"
         >
           ⚠

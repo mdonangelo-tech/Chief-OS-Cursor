@@ -22,34 +22,34 @@ export function OpenLoopsSection({ loops }: { loops: OpenLoop[] }) {
 
   return (
     <section id="open-loops" className="scroll-mt-6">
-      <h2 className="text-lg font-medium text-zinc-200 mb-3">Open loops</h2>
+      <h2 className="text-lg font-medium text-foreground mb-3">Open loops</h2>
       <ul className="space-y-2">
         {loops.map((o) => (
           <li
             key={o.threadId}
-            className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3"
+            className="flex items-center justify-between gap-4 rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft"
           >
             <div className="min-w-0">
               <span
                 className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium mr-2 ${
                   o.badge === "owe_reply"
-                    ? "bg-amber-900/50 text-amber-200"
-                    : "bg-zinc-700 text-zinc-300"
+                    ? "bg-accent/15 text-accent"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 {o.badge === "owe_reply" ? "Owe reply" : "Waiting on"}
               </span>
-              <span className="text-zinc-400 text-sm">{o.lastActivityDaysAgo}d ago</span>
-              <div className="font-medium text-zinc-200 mt-0.5 truncate">
+              <span className="text-muted-foreground text-sm">{o.lastActivityDaysAgo}d ago</span>
+              <div className="font-medium text-foreground mt-0.5 truncate">
                 {text(o.subject) || "(No subject)"}
               </div>
-              <div className="text-zinc-500 text-xs truncate">{text(o.lastFrom)} · {o.accountLabel}</div>
+              <div className="text-muted-foreground text-xs truncate">{text(o.lastFrom)} · {o.accountLabel}</div>
             </div>
             <a
               href={`${GMAIL_BASE}/#inbox/${o.threadId}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-amber-500 hover:text-amber-400 shrink-0"
+              className="text-sm text-accent hover:text-accent/80 shrink-0"
             >
               Open in Gmail
             </a>

@@ -23,24 +23,24 @@ export default async function SettingsHomePage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-zinc-400 mt-1">Make ChiefOS work the way you do.</p>
+        <p className="text-muted-foreground mt-1">Make ChiefOS work the way you do.</p>
       </div>
 
       {onboardingV1Enabled() && !lastOnboardingRun && (
-        <div className="rounded-xl border border-amber-800/60 bg-amber-950/30 p-5">
-          <div className="font-medium text-amber-200">Finish onboarding (recommended)</div>
-          <div className="text-sm text-amber-200/80 mt-1">
+        <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 shadow-soft">
+          <div className="font-medium text-foreground">Finish onboarding (recommended)</div>
+          <div className="text-sm text-muted-foreground mt-1">
             A quick scan helps ChiefOS personalize your Brief and declutter rules.
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Link
               href="/onboarding"
-              className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+              className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
             >
               Start onboarding
             </Link>
             {accountsCount === 0 && (
-              <Link href="/settings/accounts" className="text-sm text-amber-200 hover:underline">
+              <Link href="/settings/accounts" className="text-sm text-accent hover:underline">
                 Connect accounts first
               </Link>
             )}
@@ -51,43 +51,43 @@ export default async function SettingsHomePage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
           href="/settings/personal"
-          className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:bg-zinc-900/50 transition-colors"
+          className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
         >
-          <div className="font-medium text-zinc-200">Personal context</div>
-          <div className="text-sm text-zinc-500 mt-1">Goals and preferences used to shape your Brief.</div>
+          <div className="font-medium text-foreground">Personal context</div>
+          <div className="text-sm text-muted-foreground mt-1">Goals and preferences used to shape your Brief.</div>
         </Link>
 
         <Link
           href="/settings/accounts"
-          className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:bg-zinc-900/50 transition-colors"
+          className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
         >
-          <div className="font-medium text-zinc-200">Accounts</div>
-          <div className="text-sm text-zinc-500 mt-1">Connect Gmail + Calendar and manage sync.</div>
+          <div className="font-medium text-foreground">Accounts</div>
+          <div className="text-sm text-muted-foreground mt-1">Connect Gmail + Calendar and manage sync.</div>
         </Link>
 
         <Link
           href="/settings/declutter"
-          className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:bg-zinc-900/50 transition-colors"
+          className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
         >
-          <div className="font-medium text-zinc-200">Declutter</div>
-          <div className="text-sm text-zinc-500 mt-1">Automation policies, rules, and review queue.</div>
+          <div className="font-medium text-foreground">Declutter</div>
+          <div className="text-sm text-muted-foreground mt-1">Automation policies, rules, and review queue.</div>
         </Link>
 
         <Link
           href="/settings/categories"
-          className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:bg-zinc-900/50 transition-colors"
+          className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
         >
-          <div className="font-medium text-zinc-200">Categories</div>
-          <div className="text-sm text-zinc-500 mt-1">Organize categories and protection rules.</div>
+          <div className="font-medium text-foreground">Categories</div>
+          <div className="text-sm text-muted-foreground mt-1">Organize categories and protection rules.</div>
         </Link>
 
         {onboardingV1Enabled() && (
           <Link
             href="/settings/onboarding"
-            className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:bg-zinc-900/50 transition-colors"
+            className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
           >
-            <div className="font-medium text-zinc-200">Onboarding</div>
-            <div className="text-sm text-zinc-500 mt-1">Re-run scan and manage onboarding state.</div>
+            <div className="font-medium text-foreground">Onboarding</div>
+            <div className="text-sm text-muted-foreground mt-1">Re-run scan and manage onboarding state.</div>
           </Link>
         )}
       </div>

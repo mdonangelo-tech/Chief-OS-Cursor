@@ -38,10 +38,10 @@ export function BriefContent({ payload }: { payload: BriefPayload }) {
             key={f}
             type="button"
             onClick={() => setAccountFilter(f)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
+            className={`rounded-xl px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
               accountFilter === f
-                ? "bg-amber-600 text-white"
-                : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                ? "bg-accent text-accent-foreground"
+                : "bg-muted text-muted-foreground hover:text-foreground"
             }`}
           >
             {f}
@@ -59,7 +59,7 @@ export function BriefContent({ payload }: { payload: BriefPayload }) {
       />
 
       <section id="priorities" className="scroll-mt-6">
-        <h2 className="text-lg font-medium text-zinc-200 mb-3">Top priorities</h2>
+        <h2 className="text-lg font-medium text-foreground mb-3">Top priorities</h2>
         {priorities.length > 0 ? (
           <ul className="space-y-4">
             {priorities.map((p) => (
@@ -84,13 +84,13 @@ export function BriefContent({ payload }: { payload: BriefPayload }) {
             ))}
           </ul>
         ) : (
-          <p className="text-zinc-500 text-sm">No priorities for this filter.</p>
+          <p className="text-muted-foreground text-sm">No priorities for this filter.</p>
         )}
       </section>
 
       <OpenLoopsSection loops={openLoops.slice(0, MAX_OPEN_LOOPS_RENDER)} />
       {openLoops.length > MAX_OPEN_LOOPS_RENDER && (
-        <p className="text-zinc-600 text-xs">
+        <p className="text-muted-foreground/80 text-xs">
           Showing {MAX_OPEN_LOOPS_RENDER} of {openLoops.length}. Tighten filters above to narrow.
         </p>
       )}

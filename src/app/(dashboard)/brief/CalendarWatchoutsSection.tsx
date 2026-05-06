@@ -51,21 +51,21 @@ export function CalendarWatchoutsSection({ summary, byDay }: CalendarWatchoutsSe
   return (
     <section id="calendar" className="scroll-mt-6">
       <div className="flex items-center justify-between gap-4 mb-2">
-        <h2 className="text-lg font-medium text-zinc-200">Calendar (next 7 days)</h2>
+        <h2 className="text-lg font-medium text-foreground">Calendar (next 7 days)</h2>
         <button
           type="button"
           onClick={() => setExpanded((x) => !x)}
-          className="text-sm text-amber-500 hover:text-amber-400"
+          className="text-sm text-accent hover:text-accent/80"
         >
           {expanded ? "Collapse" : "Expand"}
         </button>
       </div>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-        <p className="text-zinc-300 text-sm">
+      <div className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft">
+        <p className="text-foreground/90 text-sm">
           {summary.narrative ? summary.narrative : summaryParts.length > 0 ? summaryParts.join(" · ") : "No watchouts"}
         </p>
         {summary.narrative && summaryParts.length > 0 && (
-          <p className="text-zinc-500 text-xs mt-1">{summaryParts.join(" · ")}</p>
+          <p className="text-muted-foreground text-xs mt-1">{summaryParts.join(" · ")}</p>
         )}
       </div>
       {expanded && Object.keys(byDay).length > 0 && (
@@ -73,11 +73,11 @@ export function CalendarWatchoutsSection({ summary, byDay }: CalendarWatchoutsSe
           {Object.entries(byDay)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([day, events]) => (
-              <div key={day} className="rounded border border-zinc-800 bg-zinc-900/30 px-3 py-2">
-                <div className="text-sm font-medium text-zinc-400">{fmtDate(day)}</div>
+              <div key={day} className="rounded-xl border border-border/10 bg-surface/40 px-3 py-2">
+                <div className="text-sm font-medium text-muted-foreground">{fmtDate(day)}</div>
                 <ul className="mt-1 space-y-1">
                   {events.slice(0, 5).map((e) => (
-                    <li key={e.id} className="text-zinc-500 text-sm flex items-center gap-2">
+                    <li key={e.id} className="text-muted-foreground text-sm flex items-center gap-2">
                       <span>
                         {new Date(e.startAt).toLocaleTimeString(undefined, {
                           hour: "numeric",
@@ -86,12 +86,12 @@ export function CalendarWatchoutsSection({ summary, byDay }: CalendarWatchoutsSe
                       </span>
                       <span>{e.title || "(No title)"}</span>
                       {e.flags.length > 0 && (
-                        <span className="text-amber-500/80 text-xs">({e.flags.join(", ")})</span>
+                        <span className="text-accent/80 text-xs">({e.flags.join(", ")})</span>
                       )}
                     </li>
                   ))}
                   {events.length > 5 && (
-                    <li className="text-zinc-600 text-xs">+{events.length - 5} more</li>
+                    <li className="text-muted-foreground/70 text-xs">+{events.length - 5} more</li>
                   )}
                 </ul>
               </div>
