@@ -146,16 +146,7 @@ export function ArchiveByDaysRunner() {
           disabled={loading !== null}
           className="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
         >
-          {loading === "run" ? "Archiving…" : loading === "runPreview" ? "Loading…" : "Archive next 1000"}
-        </button>
-        <button
-          type="button"
-          onClick={() => fetchPreview("run")}
-          disabled={loading !== null}
-          className="rounded-lg border border-amber-700 px-4 py-2 text-sm text-amber-200 hover:bg-amber-950/30 disabled:opacity-50"
-          title="Runs multiple 1000-email batches until done (or you stop)."
-        >
-          Archive all eligible
+          {loading === "run" ? "Archiving…" : loading === "runPreview" ? "Loading…" : "Archive all eligible"}
         </button>
         <a
           href={`https://mail.google.com/mail/#search/${encodeURIComponent(`in:inbox older_than:${days}d`)}`}
@@ -245,10 +236,7 @@ export function ArchiveByDaysRunner() {
                   : {fmt(preview.oldestDate)} → {fmt(preview.newestDate)}
                 </div>
                 <div className="text-zinc-500 text-xs mt-1">
-                  This run will process up to <strong>1000</strong> emails.
-                </div>
-                <div className="text-zinc-600 text-xs mt-1">
-                  “Archive all eligible” will run multiple batches (up to 50) until none remain.
+                  ChiefOS archives in safe batches and records everything in Audit.
                 </div>
               </div>
               <button
@@ -314,7 +302,7 @@ export function ArchiveByDaysRunner() {
               ) : null}
               <button
                 type="button"
-                onClick={runArchive}
+                onClick={runArchiveAll}
                 disabled={
                   loading === "run" ||
                   loading === "runAll" ||
@@ -323,21 +311,29 @@ export function ArchiveByDaysRunner() {
                 }
                 className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
               >
-                {loading === "run" ? "Archiving…" : "Archive next 1000"}
-              </button>
-              <button
-                type="button"
-                onClick={runArchiveAll}
-                disabled={
-                  loading === "run" ||
-                  loading === "runAll" ||
-                  preview.total === 0 ||
-                  (requiresDoubleConfirm && !confirmChecked)
-                }
-                className="rounded-lg border border-amber-700 px-3 py-2 text-sm text-amber-200 hover:bg-amber-950/30 disabled:opacity-50"
-              >
                 {loading === "runAll" ? "Archiving all…" : "Archive all eligible"}
               </button>
+              <details className="ml-2">
+                <summary className="cursor-pointer text-sm text-zinc-500 hover:text-zinc-300 select-none">
+                  Advanced
+                </summary>
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={runArchive}
+                    disabled={
+                      loading === "run" ||
+                      loading === "runAll" ||
+                      preview.total === 0 ||
+                      (requiresDoubleConfirm && !confirmChecked)
+                    }
+                    className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900 disabled:opacity-50"
+                    title="Processes a limited batch per click"
+                  >
+                    {loading === "run" ? "Archiving…" : "Archive a batch"}
+                  </button>
+                </div>
+              </details>
             </div>
           </div>
         </div>

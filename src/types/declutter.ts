@@ -8,6 +8,10 @@ export type DeclutterCategoryBreakdownItem = {
 
 export type DeclutterPreviewDebug = {
   generatedAt: string;
+  /** For "upcoming" previews: how far into the future we simulated eligibility. */
+  horizonDays?: number;
+  /** For "upcoming" previews: the effective `now` used for decisions. */
+  previewNow?: string;
   scanned?: number;
   accountCount: number;
   accounts?: Array<{

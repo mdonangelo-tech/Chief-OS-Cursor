@@ -33,7 +33,11 @@ async function getImpl(_req: NextRequest) {
   }
 
   const userId = session.user.id;
-  const now = new Date();
+  const horizonDaysRaw = _req.nextUrl.searchParams.get("horizonDays");
+  const horizonDays = horizonDaysRaw
+    ? Math.min(365, Math.max(0, parseInt(horizonDaysRaw, 10) || 0))
+    : 0;
+  const now = new Date(Date.now() + horizonDays * 24 * 60 * 60 * 1000);
 
   const accounts = await prisma.googleAccount.findMany({
     where: { userId },
@@ -50,6 +54,8 @@ async function getImpl(_req: NextRequest) {
       protectedBlockedCount: 0,
       debug: {
         generatedAt: new Date().toISOString(),
+        horizonDays,
+        previewNow: now.toISOString(),
         scanned: 0,
         accountCount: 0,
         note:
@@ -195,6 +201,8 @@ async function getImpl(_req: NextRequest) {
     protectedBlockedCount,
     debug: {
       generatedAt: new Date().toISOString(),
+      horizonDays,
+      previewNow: now.toISOString(),
       scanned,
       accountCount: accountIds.length,
       accounts: accounts.map((a) => {

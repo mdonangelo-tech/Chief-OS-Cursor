@@ -271,7 +271,7 @@ export default async function DeclutterPage({
           </span>
         </div>
         <div className="mt-4 pt-4 border-t border-zinc-800">
-          <h3 className="text-sm font-medium text-zinc-300 mb-2">48h rule</h3>
+          <h3 className="text-sm font-medium text-zinc-300 mb-2">Upcoming auto-archive</h3>
           <AutoArchiveRunner />
         </div>
         <div className="mt-4 pt-4 border-t border-zinc-800">

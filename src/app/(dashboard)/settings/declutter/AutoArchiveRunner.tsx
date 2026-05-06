@@ -11,6 +11,7 @@ export function AutoArchiveRunner() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const stopAllRef = useRef(false);
+  const [horizonDays, setHorizonDays] = useState<number>(2);
 
   const blockedCount = preview?.protectedBlockedCount ?? 0;
   const requiresDoubleConfirm = (preview?.total ?? 0) > 200 || blockedCount > 0;
@@ -23,7 +24,11 @@ export function AutoArchiveRunner() {
   async function fetchPreview(mode: "preview" | "run") {
     setLoading(mode === "run" ? "runPreview" : "preview");
     try {
-      const res = await apiFetch("/api/declutter/preview-auto-archive", { method: "GET" });
+      const previewHorizonDays = mode === "run" ? 0 : horizonDays;
+      const res = await apiFetch(
+        `/api/declutter/preview-auto-archive?horizonDays=${encodeURIComponent(String(previewHorizonDays))}`,
+        { method: "GET" }
+      );
       const data = (await res.json()) as PreviewAutoArchiveResponse | { error?: string };
       if (!res.ok || !("ok" in data)) throw new Error((data as any).error ?? "Failed");
       setPreview(data as PreviewAutoArchiveResponse);
@@ -101,9 +106,32 @@ export function AutoArchiveRunner() {
   return (
     <div className="space-y-3">
       <p className="text-zinc-400 text-sm">
-        Test the 48h rule: Preview what would be archived, or run now. Requires auto-archive On and at least one category with &quot;Archive after 48h&quot;.
+        Preview what will be eligible under your auto-archive rules. Running archives only what’s eligible <strong>right now</strong> (and records everything in Audit).
       </p>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <select
+            value={horizonDays}
+            onChange={(e) => setHorizonDays(Number(e.target.value))}
+            className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200"
+            aria-label="Preview window"
+          >
+            <option value={2}>Next 48 hours</option>
+            <option value={7}>Next 7 days</option>
+            <option value={30}>Next 30 days</option>
+          </select>
+          <input
+            type="number"
+            min={0}
+            max={365}
+            value={horizonDays}
+            onChange={(e) =>
+              setHorizonDays(Math.max(0, Math.min(365, Number(e.target.value) || 0)))
+            }
+            className="w-20 rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200"
+            aria-label="Custom preview days"
+          />
+        </div>
         <button
           type="button"
           onClick={() => fetchPreview("preview")}
@@ -118,16 +146,7 @@ export function AutoArchiveRunner() {
           disabled={loading !== null}
           className="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
         >
-          {loading === "run" ? "Archiving…" : loading === "runPreview" ? "Loading…" : "Archive next 1000"}
-        </button>
-        <button
-          type="button"
-          onClick={() => fetchPreview("run")}
-          disabled={loading !== null}
-          className="rounded-lg border border-amber-700 px-4 py-2 text-sm text-amber-200 hover:bg-amber-950/30 disabled:opacity-50"
-          title="Runs multiple 1000-email batches until done (or you stop)."
-        >
-          Archive all eligible
+          {loading === "run" ? "Archiving…" : loading === "runPreview" ? "Loading…" : "Archive all eligible"}
         </button>
       </div>
 
@@ -154,7 +173,7 @@ export function AutoArchiveRunner() {
           ) : (
             <>
               <p>
-                Eligible now: <strong>{preview.total}</strong>
+                Eligible by preview window: <strong>{preview.total}</strong>
               </p>
               <p className="text-xs text-zinc-500 mt-1">
                 <span
@@ -205,10 +224,7 @@ export function AutoArchiveRunner() {
                   : {fmt(preview.oldestDate)} → {fmt(preview.newestDate)}
                 </div>
                 <div className="text-zinc-500 text-xs mt-1">
-                  This run will process up to <strong>1000</strong> emails.
-                </div>
-                <div className="text-zinc-600 text-xs mt-1">
-                  “Archive all eligible” will run multiple batches (up to 50) until none remain.
+                  ChiefOS archives in safe batches and records everything in Audit.
                 </div>
               </div>
               <button
@@ -274,7 +290,7 @@ export function AutoArchiveRunner() {
               ) : null}
               <button
                 type="button"
-                onClick={runArchive}
+                onClick={runArchiveAll}
                 disabled={
                   loading === "run" ||
                   loading === "runAll" ||
@@ -283,21 +299,29 @@ export function AutoArchiveRunner() {
                 }
                 className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
               >
-                {loading === "run" ? "Archiving…" : "Archive next 1000"}
-              </button>
-              <button
-                type="button"
-                onClick={runArchiveAll}
-                disabled={
-                  loading === "run" ||
-                  loading === "runAll" ||
-                  preview.total === 0 ||
-                  (requiresDoubleConfirm && !confirmChecked)
-                }
-                className="rounded-lg border border-amber-700 px-3 py-2 text-sm text-amber-200 hover:bg-amber-950/30 disabled:opacity-50"
-              >
                 {loading === "runAll" ? "Archiving all…" : "Archive all eligible"}
               </button>
+              <details className="ml-2">
+                <summary className="cursor-pointer text-sm text-zinc-500 hover:text-zinc-300 select-none">
+                  Advanced
+                </summary>
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={runArchive}
+                    disabled={
+                      loading === "run" ||
+                      loading === "runAll" ||
+                      preview.total === 0 ||
+                      (requiresDoubleConfirm && !confirmChecked)
+                    }
+                    className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900 disabled:opacity-50"
+                    title="Processes a limited batch per click"
+                  >
+                    {loading === "run" ? "Archiving…" : "Archive a batch"}
+                  </button>
+                </div>
+              </details>
             </div>
           </div>
         </div>
