@@ -107,10 +107,15 @@ export async function rollbackRunAction(formData: FormData) {
   if (!session?.user?.id) return;
   const runId = formData.get("runId") as string;
   if (!runId) return;
+  const returnToRaw = formData.get("returnTo");
+  const returnTo =
+    typeof returnToRaw === "string" && returnToRaw.trim().startsWith("/")
+      ? returnToRaw.trim()
+      : "/audit";
   const { rollbackRun } = await import("@/services/gmail/actions");
   await rollbackRun(session.user.id, runId);
   revalidatePath("/audit");
-  redirect("/audit");
+  redirect(returnTo);
 }
 
 /** Accept suggestion: dismiss from queue without creating a rule. Keeps classification, stops future suggestions. */
