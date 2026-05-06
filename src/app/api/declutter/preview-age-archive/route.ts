@@ -234,38 +234,63 @@ async function getImpl(req: NextRequest) {
       cutoff: cutoff.toISOString(),
       scanned,
       accountCount: accountIds.length,
-      accounts: accounts.map((a) => {
-        const syncState = (a.syncStateJson as Record<string, unknown> | null) ?? {};
-        const authError =
-          (syncState.authError as { code?: unknown; message?: unknown } | null) ?? null;
-        return {
-          id: a.id,
-          email: a.email,
-          lastSyncAt:
-            typeof syncState.lastSyncAt === "string" ? (syncState.lastSyncAt as string) : null,
-          lastGmailAttemptAt:
-            typeof syncState.lastGmailAttemptAt === "string"
-              ? (syncState.lastGmailAttemptAt as string)
+      accounts: await Promise.all(
+        accounts.map(async (a) => {
+          const syncState = (a.syncStateJson as Record<string, unknown> | null) ?? {};
+          const authError =
+            (syncState.authError as { code?: unknown; message?: unknown } | null) ?? null;
+
+          const inboxCountBeforeCutoffInDb = await prisma.emailEvent.count({
+            where: {
+              googleAccountId: a.id,
+              labels: { has: "INBOX" },
+              NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
+              date: { lte: cutoff },
+            },
+          });
+          const maxInboxDateBeforeCutoffInDb = await prisma.emailEvent.aggregate({
+            where: {
+              googleAccountId: a.id,
+              labels: { has: "INBOX" },
+              NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
+              date: { lte: cutoff },
+            },
+            _max: { date: true },
+          });
+
+          return {
+            id: a.id,
+            email: a.email,
+            lastSyncAt:
+              typeof syncState.lastSyncAt === "string" ? (syncState.lastSyncAt as string) : null,
+            lastGmailAttemptAt:
+              typeof syncState.lastGmailAttemptAt === "string"
+                ? (syncState.lastGmailAttemptAt as string)
+                : null,
+            lastCalendarAttemptAt:
+              typeof syncState.lastCalendarAttemptAt === "string"
+                ? (syncState.lastCalendarAttemptAt as string)
+                : null,
+            lastGmailCursorAt:
+              typeof syncState.lastGmailCursorAt === "string"
+                ? (syncState.lastGmailCursorAt as string)
+                : null,
+            lastGmailBackfillBeforeAt:
+              typeof syncState.lastGmailBackfillBeforeAt === "string"
+                ? (syncState.lastGmailBackfillBeforeAt as string)
+                : null,
+            gmailCatchupCursorDay:
+              typeof syncState.gmailCatchupCursorDay === "string"
+                ? (syncState.gmailCatchupCursorDay as string)
+                : null,
+            inboxCountBeforeCutoffInDb,
+            maxInboxDateBeforeCutoffInDb: maxInboxDateBeforeCutoffInDb._max.date
+              ? maxInboxDateBeforeCutoffInDb._max.date.toISOString()
               : null,
-          lastCalendarAttemptAt:
-            typeof syncState.lastCalendarAttemptAt === "string"
-              ? (syncState.lastCalendarAttemptAt as string)
-              : null,
-          lastGmailCursorAt:
-            typeof syncState.lastGmailCursorAt === "string"
-              ? (syncState.lastGmailCursorAt as string)
-              : null,
-          lastGmailBackfillBeforeAt:
-            typeof syncState.lastGmailBackfillBeforeAt === "string"
-              ? (syncState.lastGmailBackfillBeforeAt as string)
-              : null,
-          gmailCatchupCursorDay:
-            typeof syncState.gmailCatchupCursorDay === "string"
-              ? (syncState.gmailCatchupCursorDay as string)
-              : null,
-          authErrorCode: typeof authError?.code === "string" ? (authError.code as string) : null,
-        };
-      }),
+            authErrorCode: typeof authError?.code === "string" ? (authError.code as string) : null,
+          };
+        })
+      ),
       note: `Freshness pass attempted ${reconcileAttempted} message(s), updated ${reconcileUpdated}. If totals still look stale, refresh again to reconcile more of the oldest eligible rows.`,
     },
   };

@@ -19,6 +19,9 @@ export type DeclutterPreviewDebug = {
     lastGmailCursorAt?: string | null;
     lastGmailBackfillBeforeAt?: string | null;
     gmailCatchupCursorDay?: string | null;
+    // Coverage diagnostics (varies by endpoint)
+    inboxCountBeforeCutoffInDb?: number;
+    maxInboxDateBeforeCutoffInDb?: string | null;
     authErrorCode?: string | null;
   }>;
   note?: string;
