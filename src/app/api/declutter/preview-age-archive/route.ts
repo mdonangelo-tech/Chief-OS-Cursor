@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decideEmail } from "@/lib/decision-engine";
 import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
-import { fetchMessageMetadata } from "@/services/gmail/client";
+import { fetchMessageMetadata, listMessageIds } from "@/services/gmail/client";
 import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import type { PreviewAgeArchiveResponse } from "@/types/declutter";
 import { withApiGuard } from "@/lib/api/api-guard";
@@ -123,6 +123,17 @@ async function getImpl(req: NextRequest) {
       }
     }
   }
+
+  // Best-effort coverage probe near the cutoff window.
+  // If Postgres doesn't contain the relevant date band yet, this helps us distinguish
+  // "missing backfill" from "no such messages in Gmail INBOX".
+  const cutoffWindowDays = 21;
+  const cutoffWindowStart = new Date(cutoff);
+  cutoffWindowStart.setDate(cutoffWindowStart.getDate() - cutoffWindowDays);
+  cutoffWindowStart.setHours(0, 0, 0, 0);
+  const cutoffWindowEnd = new Date(cutoff);
+  cutoffWindowEnd.setDate(cutoffWindowEnd.getDate() + 1);
+  cutoffWindowEnd.setHours(0, 0, 0, 0);
 
   let excludedProtectedCount = 0;
   const byCategoryCounts = new Map<string | null, number>();
@@ -258,6 +269,26 @@ async function getImpl(req: NextRequest) {
             _max: { date: true },
           });
 
+          // Gmail sample: count up to N ids in the cutoff window.
+          let gmailInboxSampleCountInCutoffWindow = 0;
+          try {
+            const q = `in:inbox after:${cutoffWindowStart.getFullYear()}/${String(
+              cutoffWindowStart.getMonth() + 1
+            ).padStart(2, "0")}/${String(cutoffWindowStart.getDate()).padStart(
+              2,
+              "0"
+            )} before:${cutoffWindowEnd.getFullYear()}/${String(
+              cutoffWindowEnd.getMonth() + 1
+            ).padStart(2, "0")}/${String(cutoffWindowEnd.getDate()).padStart(2, "0")}`;
+            const SAMPLE_CAP = 250;
+            for await (const ids of listMessageIds(a.id, userId, q, 100)) {
+              gmailInboxSampleCountInCutoffWindow += ids.length;
+              if (gmailInboxSampleCountInCutoffWindow >= SAMPLE_CAP) break;
+            }
+          } catch {
+            // ignore probe errors (token/network/etc)
+          }
+
           return {
             id: a.id,
             email: a.email,
@@ -287,11 +318,12 @@ async function getImpl(req: NextRequest) {
             maxInboxDateBeforeCutoffInDb: maxInboxDateBeforeCutoffInDb._max.date
               ? maxInboxDateBeforeCutoffInDb._max.date.toISOString()
               : null,
+            gmailInboxSampleCountInCutoffWindow,
             authErrorCode: typeof authError?.code === "string" ? (authError.code as string) : null,
           };
         })
       ),
-      note: `Freshness pass attempted ${reconcileAttempted} message(s), updated ${reconcileUpdated}. If totals still look stale, refresh again to reconcile more of the oldest eligible rows.`,
+      note: `Freshness pass attempted ${reconcileAttempted} message(s), updated ${reconcileUpdated}. Gmail probe window: ${cutoffWindowDays}d ending at cutoff.`,
     },
   };
   return NextResponse.json(res);

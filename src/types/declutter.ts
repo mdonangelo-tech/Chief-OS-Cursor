@@ -22,6 +22,8 @@ export type DeclutterPreviewDebug = {
     // Coverage diagnostics (varies by endpoint)
     inboxCountBeforeCutoffInDb?: number;
     maxInboxDateBeforeCutoffInDb?: string | null;
+    // Gmail-side signal (bounded sample)
+    gmailInboxSampleCountInCutoffWindow?: number;
     authErrorCode?: string | null;
   }>;
   note?: string;
