@@ -13,11 +13,11 @@ export function AutoArchiveToggle({ enabled, disableForm, enableForm }: AutoArch
 
   if (confirming) {
     return (
-      <div className="rounded-lg border border-amber-800 bg-amber-950/30 p-4 max-w-md">
-        <p className="text-amber-200 text-sm font-medium mb-2">
+      <div className="rounded-2xl border border-border/10 bg-surface/60 p-4 max-w-md shadow-soft">
+        <p className="text-foreground text-sm font-medium mb-2">
           First time enabling auto-archive
         </p>
-        <p className="text-zinc-400 text-sm mb-4">
+        <p className="text-muted-foreground text-sm mb-4">
           Emails 48h+ old in categories with &quot;Archive after 48h&quot; will be
           auto-archived. All actions are audited—you can undo individual items or
           an entire run from the Audit page. Protected categories (Work, Job
@@ -28,7 +28,7 @@ export function AutoArchiveToggle({ enabled, disableForm, enableForm }: AutoArch
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-400 hover:text-zinc-200"
+            className="rounded-xl border border-border/10 bg-surface/50 px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
           >
             Cancel
           </button>
@@ -45,7 +45,7 @@ export function AutoArchiveToggle({ enabled, disableForm, enableForm }: AutoArch
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="rounded-lg bg-zinc-700 px-4 py-2 font-medium text-zinc-300 hover:bg-zinc-600"
+      className="rounded-xl bg-surface2/70 px-4 py-2 font-medium text-foreground hover:opacity-90 shadow-soft"
     >
       Enable auto-archive
     </button>

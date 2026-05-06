@@ -39,11 +39,11 @@ export function CategoryRuleRow({
 
   return (
     <li
-      className={`flex flex-wrap items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 transition-opacity ${
+      className={`flex flex-wrap items-center gap-3 rounded-2xl border border-border/10 bg-surface/60 px-4 py-3 transition-opacity shadow-soft ${
         isPending ? "opacity-60" : ""
       }`}
     >
-      <span className="text-zinc-200 min-w-[120px]">{categoryName}</span>
+      <span className="text-foreground min-w-[120px]">{categoryName}</span>
       <form
         id={`category-rule-form-${categoryId}`}
         action={upsertCategoryDeclutterRule}
@@ -57,7 +57,7 @@ export function CategoryRuleRow({
             setAction(e.target.value);
             markDirty();
           }}
-          className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-200"
+          className="rounded-xl border border-border/10 bg-background px-2 py-1.5 text-sm text-foreground"
         >
           <option value="label_only">Label + digest</option>
           <option value="archive_after_48h">Archive after 48h</option>
@@ -66,7 +66,7 @@ export function CategoryRuleRow({
           <option value="never">Never</option>
         </select>
         {action === "archive_after_days" && (
-          <label className="flex items-center gap-1 text-sm text-zinc-400">
+          <label className="flex items-center gap-1 text-sm text-muted-foreground">
             <span>Days:</span>
             <input
               type="number"
@@ -79,7 +79,7 @@ export function CategoryRuleRow({
                 setDays(v);
                 markDirty();
               }}
-              className="w-16 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-200 text-sm"
+              className="w-16 rounded-xl border border-border/10 bg-background px-2 py-1 text-foreground text-sm"
             />
           </label>
         )}
@@ -88,7 +88,7 @@ export function CategoryRuleRow({
             type="button"
             onClick={handleSave}
             disabled={isPending}
-            className="text-sm text-amber-500 hover:text-amber-400 disabled:opacity-50"
+            className="text-sm text-accent hover:text-accent/80 disabled:opacity-50"
           >
             Update
           </button>
@@ -106,7 +106,7 @@ export function CategoryRuleRow({
         className="ml-auto"
       >
         <input type="hidden" name="id" value={categoryId} />
-        <button type="submit" className="text-xs text-red-500/80 hover:text-red-400">
+        <button type="submit" className="text-xs text-danger/80 hover:text-danger">
           Remove
         </button>
       </form>

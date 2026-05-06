@@ -54,14 +54,14 @@ export function PreviewTable({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-zinc-400 text-sm">
+        <p className="text-muted-foreground text-sm">
           Newest 50 emails currently in <strong>INBOX</strong>, with the deterministic decision engine output.
         </p>
         <button
           type="button"
           onClick={refresh}
           disabled={loading}
-          className="rounded-lg border border-zinc-600 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+          className="rounded-xl border border-border/10 bg-surface/50 px-3 py-1.5 text-sm text-foreground hover:bg-surface2/60 disabled:opacity-50"
         >
           {loading ? "Refreshing…" : "Refresh"}
         </button>
@@ -73,9 +73,9 @@ export function PreviewTable({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-800">
+      <div className="overflow-x-auto rounded-2xl border border-border/10 bg-surface/40 shadow-soft">
         <table className="min-w-[980px] w-full text-sm">
-          <thead className="bg-zinc-900/60 text-zinc-400">
+          <thead className="bg-surface2/60 text-muted-foreground">
             <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-medium">
               <th>From</th>
               <th>Subject</th>
@@ -85,10 +85,10 @@ export function PreviewTable({
               <th>Winner</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800">
+          <tbody className="divide-y divide-border/10">
             {items.length === 0 && !loading ? (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-zinc-500">
+                <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
                   No INBOX emails found.
                 </td>
               </tr>
@@ -99,9 +99,9 @@ export function PreviewTable({
                 return (
                   <tr
                     key={it.email.id}
-                    className="text-zinc-200 [&>td]:px-3 [&>td]:py-2 align-top"
+                    className="text-foreground [&>td]:px-3 [&>td]:py-2 align-top"
                   >
-                    <td className="max-w-[260px] truncate text-zinc-400" title={it.email.from_}>
+                    <td className="max-w-[260px] truncate text-muted-foreground" title={it.email.from_}>
                       {it.email.from_}
                     </td>
                     <td className="max-w-[340px]">
@@ -109,21 +109,21 @@ export function PreviewTable({
                         {it.email.subject || "(No subject)"}
                       </div>
                       {it.email.snippet ? (
-                        <div className="text-xs text-zinc-500 mt-0.5 line-clamp-2">
+                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                           {it.email.snippet}
                         </div>
                       ) : null}
                     </td>
                     <td className="whitespace-nowrap">
-                      <span className="inline-flex rounded bg-amber-900/40 px-2 py-0.5 text-xs text-amber-200">
+                      <span className="inline-flex rounded bg-accent/15 px-2 py-0.5 text-xs text-accent">
                         {categoryName}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap text-zinc-300">{it.decision.action}</td>
-                    <td className="whitespace-nowrap text-zinc-400">
+                    <td className="whitespace-nowrap text-foreground/90">{it.decision.action}</td>
+                    <td className="whitespace-nowrap text-muted-foreground">
                       {it.decision.archiveAt ?? "—"}
                     </td>
-                    <td className="whitespace-nowrap text-zinc-400">{it.decision.reason.winner}</td>
+                    <td className="whitespace-nowrap text-muted-foreground">{it.decision.reason.winner}</td>
                   </tr>
                 );
               })

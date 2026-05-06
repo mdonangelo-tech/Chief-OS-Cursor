@@ -105,7 +105,7 @@ export function AutoArchiveRunner() {
 
   return (
     <div className="space-y-3">
-      <p className="text-zinc-400 text-sm">
+      <p className="text-muted-foreground text-sm">
         Preview what will be eligible under your auto-archive rules. Running archives only what’s eligible <strong>right now</strong> (and records everything in Audit).
       </p>
       <div className="flex flex-wrap items-center gap-3">
@@ -113,7 +113,7 @@ export function AutoArchiveRunner() {
           <select
             value={horizonDays}
             onChange={(e) => setHorizonDays(Number(e.target.value))}
-            className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200"
+            className="rounded-xl border border-border/10 bg-background px-3 py-1.5 text-sm text-foreground"
             aria-label="Preview window"
           >
             <option value={2}>Next 48 hours</option>
@@ -128,7 +128,7 @@ export function AutoArchiveRunner() {
             onChange={(e) =>
               setHorizonDays(Math.max(0, Math.min(365, Number(e.target.value) || 0)))
             }
-            className="w-20 rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200"
+            className="w-20 rounded-xl border border-border/10 bg-background px-3 py-1.5 text-sm text-foreground"
             aria-label="Custom preview days"
           />
         </div>
@@ -136,7 +136,7 @@ export function AutoArchiveRunner() {
           type="button"
           onClick={() => fetchPreview("preview")}
           disabled={loading !== null}
-          className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+          className="rounded-xl border border-border/10 bg-surface/50 px-4 py-2 text-sm text-foreground hover:bg-surface2/60 disabled:opacity-50"
         >
           {loading === "preview" ? "Previewing…" : "Preview (dry run)"}
         </button>
@@ -144,7 +144,7 @@ export function AutoArchiveRunner() {
           type="button"
           onClick={() => fetchPreview("run")}
           disabled={loading !== null}
-          className="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
+          className="rounded-xl bg-accent px-4 py-2 text-sm text-accent-foreground hover:opacity-90 disabled:opacity-50"
         >
           {loading === "run" ? "Archiving…" : loading === "runPreview" ? "Loading…" : "Archive all eligible"}
         </button>
@@ -154,16 +154,16 @@ export function AutoArchiveRunner() {
         <div
           className={`rounded-lg border px-3 py-3 text-sm ${
             preview.total > 0
-              ? "border-zinc-700 bg-zinc-900/50 text-zinc-300"
-              : "border-zinc-800 bg-zinc-900/20 text-zinc-400"
+              ? "border-border/10 bg-surface/60 text-foreground/90 shadow-soft"
+              : "border-border/10 bg-surface/40 text-muted-foreground"
           }`}
         >
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-xs text-zinc-500">Preview</span>
+            <span className="text-xs text-muted-foreground">Preview</span>
             <button
               type="button"
               onClick={() => setPreview(null)}
-              className="text-xs text-zinc-500 hover:text-zinc-400"
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
               Clear
             </button>
@@ -175,7 +175,7 @@ export function AutoArchiveRunner() {
               <p>
                 Eligible by preview window: <strong>{preview.total}</strong>
               </p>
-              <p className="text-xs text-zinc-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 <span
                   className="underline decoration-dotted"
                   title="These are the received dates of emails currently eligible to be archived by this rule."
@@ -189,12 +189,12 @@ export function AutoArchiveRunner() {
                 <ul className="mt-3 space-y-1 text-xs">
                   {preview.byCategory.slice(0, 8).map((c) => (
                     <li key={c.categoryId ?? "null"} className="flex justify-between gap-4">
-                      <span className="text-zinc-400 truncate">{c.categoryName}</span>
-                      <span className="text-zinc-200 tabular-nums">{c.count}</span>
+                      <span className="text-muted-foreground truncate">{c.categoryName}</span>
+                      <span className="text-foreground tabular-nums">{c.count}</span>
                     </li>
                   ))}
                   {preview.byCategory.length > 8 && (
-                    <li className="text-zinc-600">+{preview.byCategory.length - 8} more</li>
+                    <li className="text-muted-foreground/70">+{preview.byCategory.length - 8} more</li>
                   )}
                 </ul>
               )}
@@ -204,16 +204,16 @@ export function AutoArchiveRunner() {
       )}
 
       {confirmOpen && preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-lg rounded-lg border border-zinc-800 bg-zinc-950 p-4"
+            className="w-full max-w-lg rounded-2xl border border-border/10 bg-surface p-4 shadow-soft"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-zinc-200 font-medium">Confirm auto-archive</div>
-                <div className="text-zinc-500 text-xs mt-0.5">
+                <div className="text-foreground font-medium">Confirm auto-archive</div>
+                <div className="text-muted-foreground text-xs mt-0.5">
                   Eligible now: {preview.total} ·{" "}
                   <span
                     className="underline decoration-dotted"
@@ -223,39 +223,39 @@ export function AutoArchiveRunner() {
                   </span>
                   : {fmt(preview.oldestDate)} → {fmt(preview.newestDate)}
                 </div>
-                <div className="text-zinc-500 text-xs mt-1">
+                <div className="text-muted-foreground text-xs mt-1">
                   ChiefOS archives in safe batches and records everything in Audit.
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setConfirmOpen(false)}
-                className="text-zinc-500 hover:text-zinc-300 text-sm"
+                className="text-muted-foreground hover:text-foreground text-sm"
               >
                 ✕
               </button>
             </div>
 
             {preview.total === 0 ? (
-              <div className="mt-4 text-zinc-400 text-sm">Nothing eligible to archive.</div>
+              <div className="mt-4 text-muted-foreground text-sm">Nothing eligible to archive.</div>
             ) : (
               <>
-                <div className="mt-4 rounded border border-zinc-800 bg-zinc-900/30 px-3 py-2 text-sm text-zinc-300">
+                <div className="mt-4 rounded-xl border border-border/10 bg-surface/50 px-3 py-2 text-sm text-foreground/90">
                   {preview.byCategory.slice(0, 10).map((c) => (
                     <div key={c.categoryId ?? "null"} className="flex justify-between gap-4">
-                      <span className="truncate text-zinc-400">{c.categoryName}</span>
+                      <span className="truncate text-muted-foreground">{c.categoryName}</span>
                       <span className="tabular-nums">{c.count}</span>
                     </div>
                   ))}
                   {blockedCount > 0 && (
-                    <div className="mt-2 text-amber-300 text-xs">
+                    <div className="mt-2 text-muted-foreground text-xs">
                       Protected blocked: {blockedCount}
                     </div>
                   )}
                 </div>
 
                 {requiresDoubleConfirm && (
-                  <label className="mt-3 flex items-start gap-2 text-sm text-zinc-300">
+                  <label className="mt-3 flex items-start gap-2 text-sm text-foreground/90">
                     <input
                       type="checkbox"
                       checked={confirmChecked}
@@ -273,7 +273,7 @@ export function AutoArchiveRunner() {
                 type="button"
                 onClick={() => setConfirmOpen(false)}
                 disabled={loading === "run" || loading === "runAll"}
-                className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-900 disabled:opacity-50"
+                className="rounded-xl border border-border/10 bg-surface/50 px-3 py-2 text-sm text-foreground hover:bg-surface2/60 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -283,7 +283,7 @@ export function AutoArchiveRunner() {
                   onClick={() => {
                     stopAllRef.current = true;
                   }}
-                  className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900"
+                  className="rounded-xl border border-border/10 bg-surface/50 px-3 py-2 text-sm text-foreground hover:bg-surface2/60"
                 >
                   Stop
                 </button>
@@ -297,12 +297,12 @@ export function AutoArchiveRunner() {
                   preview.total === 0 ||
                   (requiresDoubleConfirm && !confirmChecked)
                 }
-                className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
+                className="rounded-xl bg-accent px-3 py-2 text-sm text-accent-foreground hover:opacity-90 disabled:opacity-50"
               >
                 {loading === "runAll" ? "Archiving all…" : "Archive all eligible"}
               </button>
               <details className="ml-2">
-                <summary className="cursor-pointer text-sm text-zinc-500 hover:text-zinc-300 select-none">
+                <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground select-none">
                   Advanced
                 </summary>
                 <div className="mt-2 flex justify-end">
@@ -315,7 +315,7 @@ export function AutoArchiveRunner() {
                       preview.total === 0 ||
                       (requiresDoubleConfirm && !confirmChecked)
                     }
-                    className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-900 disabled:opacity-50"
+                    className="rounded-xl border border-border/10 bg-surface/50 px-3 py-2 text-sm text-foreground hover:bg-surface2/60 disabled:opacity-50"
                     title="Processes a limited batch per click"
                   >
                     {loading === "run" ? "Archiving…" : "Archive a batch"}
