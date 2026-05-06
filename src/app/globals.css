@@ -1,3 +1,55 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    /* Graphite dark (no pure black) */
+    --background: 17 19 21; /* #111315 */
+    --surface: 29 33 40; /* #1D2128 */
+    --surface2: 36 41 51; /* #242933 */
+
+    --foreground: 231 233 238;
+    --muted: 24 27 33;
+    --muted-foreground: 170 177 188;
+
+    --border: 255 255 255;
+
+    --accent: 124 158 255; /* #7C9EFF */
+    --accent-foreground: 14 18 28;
+    --ring: 124 158 255;
+
+    --danger: 248 113 113;
+    --danger-foreground: 12 13 14;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      /* Warm minimalist intelligence (light) */
+      --background: 247 247 245; /* #F7F7F5 */
+      --surface: 255 255 255; /* #FFFFFF */
+      --surface2: 250 250 248; /* #FAFAF8 */
+
+      --foreground: 17 19 21; /* #111315 */
+      --muted: 240 241 240;
+      --muted-foreground: 88 92 99;
+
+      --border: 20 23 28;
+
+      --accent: 124 158 255; /* #7C9EFF */
+      --accent-foreground: 14 18 28;
+      --ring: 124 158 255;
+
+      --danger: 225 74 74;
+      --danger-foreground: 255 255 255;
+    }
+  }
+
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
