@@ -109,7 +109,7 @@ export function ArchiveByDaysRunner() {
           disabled={loading !== null}
           className="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
         >
-          {loading === "run" ? "Archiving…" : loading === "runPreview" ? "Loading…" : "Archive next 100"}
+          {loading === "run" ? "Archiving…" : loading === "runPreview" ? "Loading…" : "Archive next 1000"}
         </button>
         <a
           href={`https://mail.google.com/mail/#search/${encodeURIComponent(`in:inbox older_than:${days}d`)}`}
@@ -199,7 +199,7 @@ export function ArchiveByDaysRunner() {
                   : {fmt(preview.oldestDate)} → {fmt(preview.newestDate)}
                 </div>
                 <div className="text-zinc-500 text-xs mt-1">
-                  This run will process up to <strong>100</strong> emails.
+                  This run will process up to <strong>1000</strong> emails.
                 </div>
               </div>
               <button
@@ -262,7 +262,7 @@ export function ArchiveByDaysRunner() {
                 }
                 className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
               >
-                {loading === "run" ? "Archiving…" : "Archive next 100"}
+                {loading === "run" ? "Archiving…" : "Archive next 1000"}
               </button>
             </div>
           </div>

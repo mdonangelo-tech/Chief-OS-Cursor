@@ -81,7 +81,7 @@ export function AutoArchiveRunner() {
           disabled={loading !== null}
           className="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
         >
-          {loading === "run" ? "Archiving…" : loading === "runPreview" ? "Loading…" : "Archive next 100"}
+          {loading === "run" ? "Archiving…" : loading === "runPreview" ? "Loading…" : "Archive next 1000"}
         </button>
       </div>
 
@@ -159,7 +159,7 @@ export function AutoArchiveRunner() {
                   : {fmt(preview.oldestDate)} → {fmt(preview.newestDate)}
                 </div>
                 <div className="text-zinc-500 text-xs mt-1">
-                  This run will process up to <strong>100</strong> emails.
+                  This run will process up to <strong>1000</strong> emails.
                 </div>
               </div>
               <button
@@ -222,7 +222,7 @@ export function AutoArchiveRunner() {
                 }
                 className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white hover:bg-amber-500 disabled:opacity-50"
               >
-                {loading === "run" ? "Archiving…" : "Archive next 100"}
+                {loading === "run" ? "Archiving…" : "Archive next 1000"}
               </button>
             </div>
           </div>

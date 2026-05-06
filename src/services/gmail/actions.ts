@@ -160,6 +160,65 @@ export async function batchArchiveMessages(
   return { archived: messageIds.length, errors: [] };
 }
 
+/** Move up to 1000 messages to Gmail Spam in one API call. For undo, stores simplified before/after. */
+export async function batchSpamMessages(
+  userId: string,
+  googleAccountId: string,
+  messageIds: string[],
+  reason: string,
+  runId?: string
+): Promise<{ spammed: number; errors: string[] }> {
+  if (messageIds.length === 0) return { spammed: 0, errors: [] };
+  if (messageIds.length > BATCH_MODIFY_LIMIT) {
+    throw new Error(
+      `batchSpamMessages: max ${BATCH_MODIFY_LIMIT} per call, got ${messageIds.length}`
+    );
+  }
+
+  const account = await prisma.googleAccount.findFirst({
+    where: { id: googleAccountId, userId },
+  });
+  if (!account) throw new Error("Google account not found");
+
+  const token = await getValidAccessToken(googleAccountId, userId);
+
+  const res = await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ids: messageIds,
+        addLabelIds: ["SPAM"],
+        removeLabelIds: ["INBOX"],
+      }),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Gmail batchModify error: ${res.status} ${await res.text()}`);
+  }
+
+  await prisma.auditLog.createMany({
+    data: messageIds.map((messageId) => ({
+      userId,
+      googleAccountId,
+      messageId,
+      runId: runId ?? null,
+      actionType: "SPAM" as const,
+      reason,
+      confidence: 0.95,
+      beforeLabelsJson: ["INBOX"],
+      afterLabelsJson: ["SPAM"],
+      rollbackStatus: "applied" as const,
+    })),
+  });
+
+  return { spammed: messageIds.length, errors: [] };
+}
+
 /** Move a message to Gmail Spam folder. Audited as actionType SPAM for rollback. */
 export async function moveToSpamMessage(
   userId: string,

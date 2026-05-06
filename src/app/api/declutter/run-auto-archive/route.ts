@@ -21,7 +21,7 @@ async function postImpl(_req: NextRequest) {
 
   const userId = session.user.id;
   const now = new Date();
-  const result = await runAutoArchiveBatch(userId, { now, maxPerCall: 100 });
+  const result = await runAutoArchiveBatch(userId, { now, maxPerCall: 1000 });
   const res: RunAutoArchiveResponse = {
     ok: true,
     processed: result.processed,

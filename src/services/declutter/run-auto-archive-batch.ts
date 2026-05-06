@@ -2,10 +2,11 @@ import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { decideEmail } from "@/lib/decision-engine";
 import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
-import { archiveMessage, moveToSpamMessage } from "@/services/gmail/actions";
+import { batchArchiveMessages, batchSpamMessages } from "@/services/gmail/actions";
 import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
+import { Prisma } from "@prisma/client";
 
-const DEFAULT_MAX_PER_CALL = 100;
+const DEFAULT_MAX_PER_CALL = 1000;
 const PAGE_SIZE = 2000;
 const MAX_SCAN = 50_000;
 
@@ -23,18 +24,6 @@ type ScanRow = {
 
 function normalizePolicyAction(action: string): string {
   return (action ?? "").toLowerCase().trim();
-}
-
-function uniqueLabels(labels: string[]): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  for (const l of labels) {
-    if (!seen.has(l)) {
-      seen.add(l);
-      out.push(l);
-    }
-  }
-  return out;
 }
 
 export type RunAutoArchiveBatchResult = {
@@ -120,16 +109,6 @@ export async function runAutoArchiveBatch(
     if (r._max.date) threadMaxByKey.set(`${r.googleAccountId}:${r.threadId}`, r._max.date);
   }
 
-  function decisionConfidence(decision: ReturnType<typeof decideEmail>): number | undefined {
-    const winner = decision.reason.winner;
-    if (winner === "personRule" || winner === "domainRule") return 1;
-    if (winner === "llm") {
-      const c = decision.reason.candidates.find((x) => x.source === "llm")?.confidence;
-      return typeof c === "number" ? c : undefined;
-    }
-    return undefined;
-  }
-
   const eligible: Array<{
     e: (typeof candidates)[number];
     decision: ReturnType<typeof decideEmail>;
@@ -158,42 +137,55 @@ export async function runAutoArchiveBatch(
   }
 
   let processed = 0;
+  const byAccountArchive = new Map<string, string[]>();
+  const byAccountSpam = new Map<string, string[]>();
   for (const { e, decision } of eligible) {
     if (decision.action === "SPAM") {
-      const { afterLabels } = await moveToSpamMessage(
-        userId,
-        e.googleAccountId,
-        e.messageId,
-        JSON.stringify(decision.reason),
-        decisionConfidence(decision),
-        runId
-      );
-
-      const nextLabels = uniqueLabels(afterLabels.filter((l) => l !== "INBOX").concat(["SPAM"]));
-      await prisma.emailEvent.update({
-        where: { id: e.id },
-        data: { labels: { set: nextLabels }, unread: false },
-      });
+      if (!byAccountSpam.has(e.googleAccountId)) byAccountSpam.set(e.googleAccountId, []);
+      byAccountSpam.get(e.googleAccountId)!.push(e.messageId);
     } else {
-      const { afterLabels } = await archiveMessage(
-        userId,
-        e.googleAccountId,
-        e.messageId,
-        JSON.stringify(decision.reason),
-        decisionConfidence(decision),
-        runId
-      );
-
-      const nextLabels = uniqueLabels(
-        afterLabels.filter((l) => l !== "INBOX").concat([CHIEFOS_ARCHIVED_LABEL])
-      );
-      await prisma.emailEvent.update({
-        where: { id: e.id },
-        data: { labels: { set: nextLabels }, unread: false },
-      });
+      if (!byAccountArchive.has(e.googleAccountId)) byAccountArchive.set(e.googleAccountId, []);
+      byAccountArchive.get(e.googleAccountId)!.push(e.messageId);
     }
+  }
 
-    processed++;
+  async function updateDbLabelsAfterBatch(
+    messageIds: string[],
+    addLabel: string
+  ): Promise<void> {
+    if (messageIds.length === 0) return;
+    await prisma.$executeRaw(
+      Prisma.sql`
+        UPDATE "EmailEvent"
+        SET
+          "labels" = (
+            SELECT ARRAY(
+              SELECT DISTINCT x
+              FROM UNNEST(ARRAY_REMOVE("labels", 'INBOX') || ARRAY[${addLabel}]) AS x
+            )
+          ),
+          "unread" = false
+        WHERE "messageId" = ANY(${messageIds})
+      `
+    );
+  }
+
+  const reason = "auto-archive-batch";
+  for (const [googleAccountId, ids] of byAccountArchive.entries()) {
+    for (let i = 0; i < ids.length; i += 1000) {
+      const chunk = ids.slice(i, i + 1000);
+      const r = await batchArchiveMessages(userId, googleAccountId, chunk, reason, runId);
+      processed += r.archived;
+      await updateDbLabelsAfterBatch(chunk, CHIEFOS_ARCHIVED_LABEL);
+    }
+  }
+  for (const [googleAccountId, ids] of byAccountSpam.entries()) {
+    for (let i = 0; i < ids.length; i += 1000) {
+      const chunk = ids.slice(i, i + 1000);
+      const r = await batchSpamMessages(userId, googleAccountId, chunk, reason, runId);
+      processed += r.spammed;
+      await updateDbLabelsAfterBatch(chunk, "SPAM");
+    }
   }
 
   // Re-count eligible after this batch so the UI (and cron) can say what's left.
