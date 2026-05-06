@@ -346,6 +346,10 @@ model EmailEvent {
   bodyHtml           String?  @db.Text
   syncAt             DateTime @default(now())
 
+  // Brief feedback loop (suppresses resurfacing in Top priorities)
+  briefDismissedAt    DateTime?
+  briefNotImportantAt DateTime?
+
   // Classification
   classificationCategoryId String?
   importanceScore         Float?

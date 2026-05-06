@@ -56,6 +56,7 @@ export interface BriefPayload {
     messagesTotal: number;
     messagesUnread: number;
   }>;
+  categories: Array<{ id: string; name: string }>;
   llmStatus: { enabled: boolean; provider: string; model: string };
   topPriorities: Array<{
     id: string;
@@ -67,6 +68,7 @@ export interface BriefPayload {
     from: string;
     snippet: string | null;
     date: string;
+    categoryId: string | null;
     categoryName: string | null;
     confidence: number | null;
     actionType: string | null;
@@ -167,18 +169,33 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
   const digestEmails = unreadEmails.filter((e) => isDigestCategory(e.category?.name ?? null));
   const nonDigest = unreadEmails.filter((e) => !isDigestCategory(e.category?.name ?? null));
 
-  const priorityCandidates = nonDigest.filter((e) => {
+  function priorityScore(e: (typeof nonDigest)[number]): number {
+    if (e.briefDismissedAt || e.briefNotImportantAt) return 0;
     const cat = e.category?.name ?? "";
     const imp = e.importanceScore ?? 0;
     const needs = e.needsAction ?? false;
     const unread = e.unread;
-    if (!unread && !needs && imp < 0.8) return false;
     const boost = BOOST_CATEGORIES.some((b) => cat.toLowerCase().includes(b.toLowerCase())) ? 0.15 : 0;
-    const base = imp >= 0.8 || needs ? 1 : unread ? 0.7 : 0;
-    return base + boost >= 0.6;
+    const base = needs || imp >= 0.8 ? 1 : imp >= 0.6 ? 0.8 : unread ? 0.4 : 0;
+    return base + boost;
+  }
+
+  const priorityCandidates = nonDigest.filter((e) => {
+    const imp = e.importanceScore ?? 0;
+    const needs = e.needsAction ?? false;
+    const unread = e.unread;
+    if (!unread && !needs && imp < 0.8) return false;
+    return priorityScore(e) >= 0.6;
   });
+
   const priorities = priorityCandidates
-    .sort((a, b) => ((b.importanceScore ?? 0) - (a.importanceScore ?? 0)))
+    .sort((a, b) => {
+      const d = priorityScore(b) - priorityScore(a);
+      if (d !== 0) return d;
+      const imp = (b.importanceScore ?? 0) - (a.importanceScore ?? 0);
+      if (imp !== 0) return imp;
+      return b.date.getTime() - a.date.getTime();
+    })
     .slice(0, MAX_PRIORITIES);
 
   const byThread = new Map<string, typeof nonDigest>();
@@ -414,6 +431,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       hasSyncErrors,
     },
     inboxByAccount,
+    categories,
     llmStatus: {
       enabled: llmStatus.enabled,
       provider: llmStatus.provider,
@@ -431,6 +449,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
         from: e.from_,
         snippet: e.snippet,
         date: e.date.toISOString(),
+        categoryId: e.classificationCategoryId ?? null,
         categoryName: e.category?.name ?? null,
         confidence: e.confidence ?? null,
         actionType: e.actionType ?? null,

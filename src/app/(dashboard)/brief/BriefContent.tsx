@@ -73,10 +73,12 @@ export function BriefContent({ payload }: { payload: BriefPayload }) {
                   subject={p.subject}
                   from={p.from}
                   snippet={p.snippet}
+                  categoryId={p.categoryId}
                   categoryName={p.categoryName}
                   confidence={p.confidence}
                   actionType={p.actionType}
                   explainJson={p.explainJson}
+                  categories={payload.categories}
                 />
               </li>
             ))}
