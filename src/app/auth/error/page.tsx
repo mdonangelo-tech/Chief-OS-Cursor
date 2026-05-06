@@ -33,10 +33,10 @@ function AuthErrorContent() {
   return (
     <>
       <h1 className="text-xl font-semibold">{title}</h1>
-      <p className="max-w-md text-center text-zinc-400">{description}</p>
+      <p className="max-w-md text-center text-muted-foreground">{description}</p>
       <Link
         href="/login"
-        className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+        className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
       >
         Back to login
       </Link>
@@ -46,8 +46,8 @@ function AuthErrorContent() {
 
 export default function AuthErrorPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 bg-zinc-950 text-zinc-100">
-      <Suspense fallback={<p className="text-zinc-400">Loading…</p>}>
+    <main className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 bg-background text-foreground">
+      <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
         <AuthErrorContent />
       </Suspense>
     </main>

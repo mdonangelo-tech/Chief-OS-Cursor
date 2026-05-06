@@ -37,10 +37,10 @@ export function WaitlistClient({ initialEmail }: { initialEmail: string }) {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-zinc-100 p-4">
+    <main className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground p-4">
       <div className="w-full max-w-sm space-y-6">
         <h1 className="text-2xl font-semibold text-center">ChiefOS is private for now.</h1>
-        <p className="text-center text-sm text-zinc-400">
+        <p className="text-center text-sm text-muted-foreground">
           Join the waitlist to get notified when we open up more invites.
         </p>
 
@@ -50,7 +50,7 @@ export function WaitlistClient({ initialEmail }: { initialEmail: string }) {
           </div>
         ) : (
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-zinc-400" htmlFor="email">
+            <label className="block text-sm font-medium text-muted-foreground" htmlFor="email">
               Email
             </label>
             <input
@@ -60,14 +60,14 @@ export function WaitlistClient({ initialEmail }: { initialEmail: string }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full px-4 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-2 rounded-xl bg-surface border border-border/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
             />
 
             <button
               type="button"
               onClick={submit}
               disabled={status === "loading"}
-              className="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium disabled:opacity-50"
+              className="w-full py-2 rounded-xl bg-accent hover:opacity-90 text-accent-foreground font-medium disabled:opacity-50"
             >
               {status === "loading" ? "Joining…" : "Join waitlist"}
             </button>

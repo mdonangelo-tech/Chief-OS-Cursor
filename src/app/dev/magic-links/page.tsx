@@ -13,28 +13,28 @@ export default async function DevMagicLinksPage() {
   const links = getRecentMagicLinks();
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-8 font-mono">
+    <div className="min-h-screen bg-background text-foreground p-8 font-mono">
       <h1 className="text-xl font-semibold mb-2">ChiefOS Dev: Magic Links</h1>
-      <p className="text-zinc-400 text-sm mb-6">
+      <p className="text-muted-foreground text-sm mb-6">
         Recent magic links (console provider). Only visible when NODE_ENV ≠
         production.
       </p>
       {links.length === 0 ? (
-        <p className="text-zinc-500">No magic links sent yet.</p>
+        <p className="text-muted-foreground">No magic links sent yet.</p>
       ) : (
         <ul className="space-y-4">
           {links.map((link, i) => (
             <li
               key={`${link.createdAt}-${i}`}
-              className="border border-zinc-700 rounded p-4 bg-zinc-900/50"
+              className="border border-border/10 rounded-2xl p-4 bg-surface/60 shadow-soft"
             >
-              <div className="text-zinc-400 text-xs mb-1">{link.createdAt}</div>
+              <div className="text-muted-foreground text-xs mb-1">{link.createdAt}</div>
               <div className="mb-2">
-                <span className="text-zinc-500">To:</span> {link.email}
+                <span className="text-muted-foreground">To:</span> {link.email}
               </div>
               <a
                 href={link.url}
-                className="text-amber-400 hover:underline break-all"
+                className="text-accent hover:underline break-all"
               >
                 {link.url}
               </a>
