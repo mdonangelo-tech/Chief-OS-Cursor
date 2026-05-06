@@ -27,6 +27,24 @@ function extractDomain(fromHeader: string): string | null {
   return parts.length === 2 ? parts[1].toLowerCase() : null;
 }
 
+function rulesHref(base: {
+  importParam: string | null;
+  q: string;
+  ruleType: string;
+  rulesSort: string;
+  rulesPageSize: string;
+  rulesPage: number;
+}): string {
+  const sp = new URLSearchParams();
+  if (base.importParam) sp.set("import", base.importParam);
+  if (base.q) sp.set("q", base.q);
+  if (base.ruleType) sp.set("ruleType", base.ruleType);
+  if (base.rulesSort) sp.set("rulesSort", base.rulesSort);
+  if (base.rulesPageSize) sp.set("rulesPageSize", base.rulesPageSize);
+  sp.set("rulesPage", String(base.rulesPage));
+  return `/settings/declutter?${sp.toString()}#rules`;
+}
+
 export default async function DeclutterPage({
   searchParams,
 }: {
@@ -228,6 +246,13 @@ export default async function DeclutterPage({
   const knownEmails = new Set(personRules.map((r) => r.email));
   const knownDomains = new Set(orgRules.map((r) => r.domain));
   const rejectedKeys = new Set(rejected.map((r) => `${r.type}:${r.value}`));
+
+  const ruleTotal = ruleType === "person" ? personRuleCount : ruleType === "org" ? orgRuleCount : 0;
+  const rulesTotalPages =
+    ruleType === "all" || rulesPageSize === "all"
+      ? 1
+      : Math.max(1, Math.ceil(ruleTotal / rulesTake));
+  const rulesPageClamped = Math.min(rulesPage, rulesTotalPages);
 
   type Suggestion = {
     id: string;
@@ -603,9 +628,43 @@ export default async function DeclutterPage({
           </form>
         </div>
 
-        {ruleType !== "all" && (
-          <div className="text-xs text-zinc-500">
-            Page {rulesPage}
+        {ruleType !== "all" && rulesPageSize !== "all" && rulesTotalPages > 1 && (
+          <div className="flex items-center justify-between text-xs text-zinc-500">
+            <span>
+              Page {rulesPageClamped} of {rulesTotalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <Link
+                href={rulesHref({
+                  importParam: typeof params.import === "string" ? params.import : null,
+                  q: ruleQ,
+                  ruleType,
+                  rulesSort,
+                  rulesPageSize: rulesPageSizeRaw,
+                  rulesPage: Math.max(1, rulesPageClamped - 1),
+                })}
+                className={`rounded border border-zinc-800 px-2 py-1 hover:bg-zinc-900 ${
+                  rulesPageClamped <= 1 ? "pointer-events-none opacity-40" : ""
+                }`}
+              >
+                Prev
+              </Link>
+              <Link
+                href={rulesHref({
+                  importParam: typeof params.import === "string" ? params.import : null,
+                  q: ruleQ,
+                  ruleType,
+                  rulesSort,
+                  rulesPageSize: rulesPageSizeRaw,
+                  rulesPage: Math.min(rulesTotalPages, rulesPageClamped + 1),
+                })}
+                className={`rounded border border-zinc-800 px-2 py-1 hover:bg-zinc-900 ${
+                  rulesPageClamped >= rulesTotalPages ? "pointer-events-none opacity-40" : ""
+                }`}
+              >
+                Next
+              </Link>
+            </div>
           </div>
         )}
 
