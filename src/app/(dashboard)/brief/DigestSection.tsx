@@ -44,8 +44,8 @@ export function DigestSection({ digestBySender }: DigestSectionProps) {
           <Link href="/audit" className="text-amber-500 hover:text-amber-400">
             Undo last run
           </Link>
-          <Link href="/settings/declutter#email-actions" className="text-zinc-500 hover:text-zinc-400">
-            Email actions
+          <Link href="/settings/declutter#suggested-actions" className="text-zinc-500 hover:text-zinc-400">
+            Suggested actions
           </Link>
         </div>
       </div>

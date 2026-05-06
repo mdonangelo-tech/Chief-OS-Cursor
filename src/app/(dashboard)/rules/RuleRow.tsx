@@ -63,7 +63,7 @@ export function RuleRow({
           {ruleType === "person" ? (
             <form action={convertPersonRuleToDomain}>
               <input type="hidden" name="ruleId" value={ruleId} />
-              <input type="hidden" name="returnTo" value="/settings/declutter#email-actions" />
+              <input type="hidden" name="returnTo" value="/settings/declutter#rules" />
               <button type="submit" className="text-xs text-zinc-500 hover:text-zinc-300">
                 Convert → domain
               </button>
@@ -81,7 +81,7 @@ export function RuleRow({
               ) : (
                 <form action={convertDomainRuleToSender} className="flex items-center gap-2">
                   <input type="hidden" name="ruleId" value={ruleId} />
-                  <input type="hidden" name="returnTo" value="/settings/declutter#email-actions" />
+                  <input type="hidden" name="returnTo" value="/settings/declutter#rules" />
                   <input
                     name="senderEmail"
                     value={convertSenderEmail}

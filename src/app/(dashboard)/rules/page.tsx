@@ -5,5 +5,5 @@ import { redirect } from "next/navigation";
  * Redirect legacy /rules to /settings/declutter.
  */
 export default function RulesPage() {
-  redirect("/settings/declutter#email-actions");
+  redirect("/settings/declutter#rules");
 }

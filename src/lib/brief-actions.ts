@@ -152,7 +152,7 @@ export async function acceptSuggestion(formData: FormData) {
   }
   revalidatePath("/brief");
   revalidatePath("/settings/declutter");
-  redirect("/settings/declutter#email-actions");
+  redirect("/settings/declutter#suggested-actions");
 }
 
 /** Reject suggestion: don't suggest this sender/domain again, revert classification. */
@@ -216,7 +216,7 @@ export async function rejectSuggestion(formData: FormData) {
   });
   revalidatePath("/brief");
   revalidatePath("/settings/declutter");
-  redirect("/settings/declutter#email-actions");
+  redirect("/settings/declutter#suggested-actions");
 }
 
 /** Approve suggested rule: creates sender or domain rule from email event. */
@@ -304,7 +304,7 @@ export async function approveRule(formData: FormData) {
   if (!noRedirect) {
     revalidatePath("/brief");
     revalidatePath("/settings/declutter");
-    redirect("/settings/declutter#email-actions");
+    redirect("/settings/declutter#suggested-actions");
   }
   // When noRedirect: don't revalidate — keeps the suggestion row visible so the button can show "Saved"
 }
@@ -360,7 +360,7 @@ export async function updateRuleCategory(formData: FormData) {
 
   revalidatePath("/brief");
   revalidatePath("/settings/declutter");
-  redirect("/settings/declutter#email-actions");
+  redirect("/settings/declutter#rules");
 }
 
 function safeReturnTo(formData: FormData, fallback: string): string {
@@ -380,7 +380,7 @@ function withRuleError(returnTo: string, message: string): string {
 export async function convertPersonRuleToDomain(formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) return;
-  const returnTo = safeReturnTo(formData, "/settings/declutter#email-actions");
+  const returnTo = safeReturnTo(formData, "/settings/declutter#rules");
   const ruleId = (formData.get("ruleId") as string) ?? "";
   if (!ruleId) return;
 
@@ -422,7 +422,7 @@ export async function convertPersonRuleToDomain(formData: FormData) {
 export async function convertDomainRuleToSender(formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) return;
-  const returnTo = safeReturnTo(formData, "/settings/declutter#email-actions");
+  const returnTo = safeReturnTo(formData, "/settings/declutter#rules");
   const ruleId = (formData.get("ruleId") as string) ?? "";
   const senderEmailRaw = formData.get("senderEmail");
   const senderEmail = typeof senderEmailRaw === "string" ? senderEmailRaw.trim().toLowerCase() : "";

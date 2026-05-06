@@ -489,11 +489,10 @@ export default async function DeclutterPage({
         )}
       </section>
 
-      <section id="email-actions" className="space-y-4 scroll-mt-6">
-        <h2 className="text-lg font-medium">Email Actions</h2>
+      <section id="suggested-actions" className="space-y-4 scroll-mt-6">
+        <h2 className="text-lg font-medium">Suggested actions</h2>
         <p className="text-zinc-400 text-sm">
-          Per-email rules: when an email matches a sender or domain, auto-categorize it. Suggest → Approve once → auto-apply next time.{" "}
-          <strong>Unsubscribe</strong> (Newsletters/Promotions) appears here on suggestions and in the Brief&apos;s Declutter section.
+          ChiefOS suggests rules based on what you’ve been receiving. Approve once and it will apply automatically next time.
         </p>
         {suggestions.length > 0 ? (
           <>
@@ -530,7 +529,10 @@ export default async function DeclutterPage({
             <p className="text-zinc-500 text-sm mt-1">No rules to review. Your queue is empty.</p>
           </div>
         )}
-        <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
+      </section>
+
+      <section id="rules" className="space-y-4 scroll-mt-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h3 className="text-base font-medium text-zinc-300">Rules</h3>
             <div className="text-xs text-zinc-500 mt-1">
