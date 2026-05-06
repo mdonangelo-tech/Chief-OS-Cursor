@@ -45,16 +45,16 @@ export function RuleRow({
   const currentCat = categories.find((c) => c.id === categoryId);
   if (!editing) {
     return (
-      <li className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm">
-        <span className="text-zinc-300 truncate min-w-0">{label}</span>
-        <span className="text-zinc-500">→</span>
-        <span className="text-zinc-400">
+      <li className="flex flex-wrap items-center gap-2 rounded-2xl border border-border/10 bg-surface/60 px-3 py-2 text-sm shadow-soft">
+        <span className="text-foreground truncate min-w-0">{label}</span>
+        <span className="text-muted-foreground">→</span>
+        <span className="text-muted-foreground">
           {currentCat ? categoryLabel(currentCat) : "—"}
         </span>
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="text-xs text-zinc-500 hover:text-amber-500 ml-2"
+          className="text-xs text-muted-foreground hover:text-accent ml-2"
         >
           Change
         </button>
@@ -64,7 +64,7 @@ export function RuleRow({
             <form action={convertPersonRuleToDomain}>
               <input type="hidden" name="ruleId" value={ruleId} />
               <input type="hidden" name="returnTo" value="/settings/declutter#rules" />
-              <button type="submit" className="text-xs text-zinc-500 hover:text-zinc-300">
+              <button type="submit" className="text-xs text-muted-foreground hover:text-foreground">
                 Convert → domain
               </button>
             </form>
@@ -74,7 +74,7 @@ export function RuleRow({
                 <button
                   type="button"
                   onClick={() => setConvertOpen(true)}
-                  className="text-xs text-zinc-500 hover:text-zinc-300"
+                  className="text-xs text-muted-foreground hover:text-foreground"
                 >
                   Convert → sender
                 </button>
@@ -87,10 +87,10 @@ export function RuleRow({
                     value={convertSenderEmail}
                     onChange={(e) => setConvertSenderEmail(e.target.value)}
                     placeholder="name@domain.com"
-                    className="w-44 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-200 placeholder-zinc-600"
+                    className="w-44 rounded-xl border border-border/10 bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground"
                     required
                   />
-                  <button type="submit" className="text-xs text-amber-500 hover:text-amber-400">
+                  <button type="submit" className="text-xs text-accent hover:text-accent/80">
                     Convert
                   </button>
                   <button
@@ -99,7 +99,7 @@ export function RuleRow({
                       setConvertOpen(false);
                       setConvertSenderEmail("");
                     }}
-                    className="text-xs text-zinc-500 hover:text-zinc-300"
+                    className="text-xs text-muted-foreground hover:text-foreground"
                   >
                     Cancel
                   </button>
@@ -113,11 +113,11 @@ export function RuleRow({
   }
 
   return (
-    <li className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2">
+    <li className="rounded-2xl border border-border/10 bg-surface/60 px-3 py-2 shadow-soft">
       <form action={updateRuleCategory} className="flex flex-wrap items-center gap-2">
         <input type="hidden" name="ruleType" value={ruleType} />
         <input type="hidden" name="ruleId" value={ruleId} />
-        <span className="text-zinc-400 text-sm">{label} →</span>
+        <span className="text-muted-foreground text-sm">{label} →</span>
         {useNew ? (
           <>
             <input
@@ -127,13 +127,13 @@ export function RuleRow({
               onChange={(e) => setNewName(e.target.value)}
               placeholder="New category name"
               required
-              className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-200 placeholder-zinc-500 w-40"
+              className="rounded-xl border border-border/10 bg-background px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground w-40"
             />
             <select
               name="newCategoryParentId"
               value={newParentId}
               onChange={(e) => setNewParentId(e.target.value)}
-              className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-300 w-32"
+              className="rounded-xl border border-border/10 bg-background px-2 py-1 text-sm text-foreground w-32"
             >
               <option value="">— Root</option>
               {roots.map((p) => (
@@ -147,7 +147,7 @@ export function RuleRow({
           <select
             name="categoryId"
             defaultValue={categoryId}
-            className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-200 min-w-[140px]"
+            className="rounded-xl border border-border/10 bg-background px-2 py-1 text-sm text-foreground min-w-[140px]"
           >
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -162,20 +162,20 @@ export function RuleRow({
             setUseNew(!useNew);
             if (useNew) setNewName("");
           }}
-          className="text-xs text-zinc-500 hover:text-amber-500"
+          className="text-xs text-muted-foreground hover:text-accent"
         >
           {useNew ? "Pick existing" : "+ New"}
         </button>
         <button
           type="submit"
-          className="text-sm text-amber-500 hover:text-amber-400"
+          className="text-sm text-accent hover:text-accent/80"
         >
           Save
         </button>
         <button
           type="button"
           onClick={() => setEditing(false)}
-          className="text-xs text-zinc-500 hover:text-zinc-400"
+          className="text-xs text-muted-foreground hover:text-foreground"
         >
           Cancel
         </button>

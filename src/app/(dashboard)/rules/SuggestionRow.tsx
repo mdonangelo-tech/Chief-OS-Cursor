@@ -78,18 +78,18 @@ export function SuggestionRow({
 
   return (
     <li
-      className={`flex flex-col gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 transition-opacity ${
+      className={`flex flex-col gap-2 rounded-2xl border border-border/10 bg-surface/60 px-4 py-3 transition-opacity shadow-soft ${
         isPending ? "opacity-60" : ""
       }`}
     >
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-zinc-300 min-w-0 truncate" title={from}>{from}</span>
-        <span className="text-zinc-500 shrink-0">→</span>
+        <span className="text-foreground min-w-0 truncate" title={from}>{from}</span>
+        <span className="text-muted-foreground shrink-0">→</span>
 
         {(hasSender || hasDomain) && (
           <form id={`suggestion-form-${id}`} className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="emailEventId" value={id} />
-            <span className="text-zinc-500 text-sm shrink-0">to</span>
+            <span className="text-muted-foreground text-sm shrink-0">to</span>
             {useNew ? (
               <>
                 <input
@@ -99,13 +99,13 @@ export function SuggestionRow({
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="New category name"
                   required
-                  className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-200 placeholder-zinc-500 w-40"
+                  className="rounded-xl border border-border/10 bg-background px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground w-40"
                 />
                 <select
                   name="newCategoryParentId"
                   value={newParentId}
                   onChange={(e) => setNewParentId(e.target.value)}
-                  className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-300 w-32"
+                  className="rounded-xl border border-border/10 bg-background px-2 py-1 text-sm text-foreground w-32"
                 >
                   <option value="">— Root (no parent)</option>
                   {roots.map((p) => (
@@ -117,7 +117,7 @@ export function SuggestionRow({
                 <button
                   type="button"
                   onClick={() => setUseNew(false)}
-                  className="text-xs text-zinc-500 hover:text-zinc-400"
+                  className="text-xs text-muted-foreground hover:text-foreground"
                 >
                   Cancel
                 </button>
@@ -126,7 +126,7 @@ export function SuggestionRow({
               <select
                 name="categoryId"
                 defaultValue={categoryId}
-                className="rounded border border-amber-800 bg-amber-950/30 px-2 py-1.5 text-sm text-amber-200 font-medium min-w-[140px]"
+                className="rounded-xl border border-border/10 bg-background px-2 py-1.5 text-sm text-foreground font-medium min-w-[140px]"
                 title="Category for this rule"
               >
                 {categories.map((c) => (
@@ -140,13 +140,13 @@ export function SuggestionRow({
               <button
                 type="button"
                 onClick={() => setUseNew(true)}
-                className="text-xs text-zinc-500 hover:text-amber-500"
+                className="text-xs text-muted-foreground hover:text-accent"
               >
                 + New category
               </button>
             )}
 
-            <span className="text-zinc-600">|</span>
+            <span className="text-muted-foreground/60">|</span>
 
             {hasSender && (
               savedSender ? (
@@ -158,7 +158,7 @@ export function SuggestionRow({
                   type="button"
                   onClick={() => handleCreateRule("sender")}
                   disabled={isPending}
-                  className="rounded-md bg-amber-700/60 px-2.5 py-1 text-sm text-amber-100 hover:bg-amber-600/70 disabled:opacity-60"
+                  className="rounded-xl bg-accent px-2.5 py-1 text-sm text-accent-foreground hover:opacity-90 disabled:opacity-60"
                 >
                   {isPending ? "Saving…" : "Create person rule"}
                 </button>
@@ -174,7 +174,7 @@ export function SuggestionRow({
                   type="button"
                   onClick={() => handleCreateRule("domain")}
                   disabled={isPending}
-                  className="rounded-md bg-amber-700/60 px-2.5 py-1 text-sm text-amber-100 hover:bg-amber-600/70 disabled:opacity-60"
+                  className="rounded-xl bg-accent px-2.5 py-1 text-sm text-accent-foreground hover:opacity-90 disabled:opacity-60"
                 >
                   {isPending ? "Saving…" : "Create domain rule"}
                 </button>
@@ -186,7 +186,7 @@ export function SuggestionRow({
         {["newsletters", "promotions", "low-priority"].includes(categoryName?.toLowerCase() ?? "") && (
           <UnsubscribeButton
             emailEventId={id}
-            className="text-xs text-amber-500 hover:text-amber-400"
+            className="text-xs text-accent hover:text-accent/80"
           />
         )}
 
@@ -207,7 +207,7 @@ export function SuggestionRow({
         </button>
 
         {confidence != null && (
-          <span className="text-zinc-500 text-xs shrink-0">
+          <span className="text-muted-foreground text-xs shrink-0">
             {Math.round(confidence * 100)}%
           </span>
         )}
@@ -218,7 +218,7 @@ export function SuggestionRow({
             <input type="hidden" name="ruleType" value="both" />
             <button
               type="submit"
-              className="text-sm text-zinc-500 hover:text-zinc-400"
+              className="text-sm text-muted-foreground hover:text-foreground"
             >
               Don&apos;t suggest again
             </button>
@@ -226,7 +226,7 @@ export function SuggestionRow({
         )}
       </div>
       {snippet && (
-        <p className="text-zinc-500 text-sm line-clamp-2">{decodeSnippet(snippet)}</p>
+        <p className="text-muted-foreground text-sm line-clamp-2">{decodeSnippet(snippet)}</p>
       )}
     </li>
   );
