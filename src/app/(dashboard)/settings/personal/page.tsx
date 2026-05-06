@@ -19,8 +19,8 @@ export default async function SettingsPersonalPage() {
 
   return (
     <div className="space-y-6">
-      <div className="text-sm text-zinc-500">
-        <Link href="/settings" className="hover:text-zinc-400">
+      <div className="text-sm text-muted-foreground">
+        <Link href="/settings" className="hover:text-foreground">
           ← Back to Settings
         </Link>
       </div>

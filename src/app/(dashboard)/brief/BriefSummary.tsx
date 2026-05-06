@@ -43,60 +43,60 @@ export function BriefSummary({
       className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8"
       aria-label="Today at a glance"
     >
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-        <div className="text-2xl font-semibold text-amber-500 tabular-nums">
+      <div className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft">
+        <div className="text-2xl font-semibold text-accent tabular-nums">
           {prioritiesCount}
         </div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">
           Priorities
         </div>
       </div>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-        <div className="text-2xl font-semibold text-zinc-200 tabular-nums">
+      <div className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft">
+        <div className="text-2xl font-semibold text-foreground tabular-nums">
           {openLoopsCount}
         </div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">
           Open loops
         </div>
       </div>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-        <div className="text-lg font-medium text-zinc-200 truncate" title={nextMeeting?.title ?? undefined}>
+      <div className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft">
+        <div className="text-lg font-medium text-foreground truncate" title={nextMeeting?.title ?? undefined}>
           {nextMeeting ? formatNextMeeting(nextMeeting.startAt as Date | string) : "—"}
         </div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">
           Next meeting
         </div>
         {nextMeeting?.title && (
-          <div className="text-xs text-zinc-600 truncate mt-1">{nextMeeting.title}</div>
+          <div className="text-xs text-muted-foreground/80 truncate mt-1">{nextMeeting.title}</div>
         )}
       </div>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-        <div className="text-2xl font-semibold text-zinc-200 tabular-nums">
+      <div className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft">
+        <div className="text-2xl font-semibold text-foreground tabular-nums">
           {overloadedDaysCount}
         </div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">
           Busy days
         </div>
       </div>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-        <div className="text-2xl font-semibold text-zinc-200 tabular-nums">
+      <div className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft">
+        <div className="text-2xl font-semibold text-foreground tabular-nums">
           {declutterCount}
         </div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">
           Declutter
         </div>
       </div>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-        <div className="text-2xl font-semibold text-zinc-200 tabular-nums">
+      <div className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft">
+        <div className="text-2xl font-semibold text-foreground tabular-nums">
           {recentAutoArchived}
         </div>
-        <div className="text-xs text-zinc-500 uppercase tracking-wide mt-0.5">
+        <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">
           Auto-archived 24h
         </div>
         {recentAutoArchived > 0 && (
           <Link
             href="/audit"
-            className="text-xs text-amber-500 hover:text-amber-400 mt-1 block"
+            className="text-xs text-accent hover:text-accent/80 mt-1 block"
           >
             Undo →
           </Link>

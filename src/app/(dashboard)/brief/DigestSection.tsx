@@ -30,21 +30,21 @@ export function DigestSection({ digestBySender }: DigestSectionProps) {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-lg font-medium text-zinc-200">Digest</h2>
+        <h2 className="text-lg font-medium text-foreground">Digest</h2>
         <div className="flex items-center gap-3 text-sm">
-          <span className="text-zinc-500">
+          <span className="text-muted-foreground">
             Newsletters & promotions — scan when you have time
           </span>
           <Link
             href="/settings/declutter"
-            className="text-amber-500 hover:text-amber-400"
+            className="text-accent hover:text-accent/80"
           >
             Archive 48h+
           </Link>
-          <Link href="/audit" className="text-amber-500 hover:text-amber-400">
+          <Link href="/audit" className="text-accent hover:text-accent/80">
             Undo last run
           </Link>
-          <Link href="/settings/declutter#suggested-actions" className="text-zinc-500 hover:text-zinc-400">
+          <Link href="/settings/declutter#suggested-actions" className="text-muted-foreground hover:text-foreground">
             Suggested actions
           </Link>
         </div>
@@ -53,12 +53,12 @@ export function DigestSection({ digestBySender }: DigestSectionProps) {
         {digestBySender.map(({ sender, emails }) => (
           <div
             key={sender}
-            className="rounded-lg border border-zinc-800 bg-zinc-900/50 overflow-hidden"
+            className="rounded-2xl border border-border/10 bg-surface/60 overflow-hidden shadow-soft"
           >
-            <div className="px-4 py-2 bg-zinc-800/50 text-sm font-medium text-zinc-300 truncate">
+            <div className="px-4 py-2 bg-surface2/50 text-sm font-medium text-foreground/90 truncate">
               {sender}
             </div>
-            <ul className="divide-y divide-zinc-800/80">
+            <ul className="divide-y divide-border/10">
               {emails.map((e) => (
                 <li key={e.id} className="px-4 py-2">
                   <EmailCard

@@ -46,12 +46,12 @@ export default async function SetupPage({
     <div className="max-w-xl space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Setup Chief of Staff</h1>
-        <p className="text-zinc-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           A few steps to personalize your daily brief
         </p>
       </div>
 
-      <div className="flex gap-2 border-b border-zinc-800 pb-4">
+      <div className="flex gap-2 border-b border-border/10 pb-4">
         {[
           { n: "1", label: "Google", done: hasGoogle },
           { n: "2", label: "Goals", done: hasGoals },
@@ -62,10 +62,10 @@ export default async function SetupPage({
             key={s.n}
             className={`text-sm ${
               step === s.n
-                ? "text-amber-500 font-medium"
+                ? "text-accent font-medium"
                 : s.done
-                  ? "text-zinc-500"
-                  : "text-zinc-600"
+                  ? "text-muted-foreground"
+                  : "text-muted-foreground/70"
             }`}
           >
             {s.n}. {s.label}{s.done ? " ✓" : ""}
@@ -77,21 +77,21 @@ export default async function SetupPage({
         <section className="space-y-4">
           <h2 className="text-lg font-medium">Connect Google account</h2>
           {hasGoogle ? (
-            <p className="text-zinc-400">
+            <p className="text-muted-foreground">
               You have {googleAccounts} Google account(s) connected.{" "}
-              <Link href="/settings/accounts" className="text-amber-500 hover:underline">
+              <Link href="/settings/accounts" className="text-accent hover:underline">
                 Add another
               </Link>{" "}
               or continue.
             </p>
           ) : (
-            <p className="text-zinc-400">
+            <p className="text-muted-foreground">
               Connect Gmail and Calendar to power your brief.
             </p>
           )}
           <Link
             href={hasGoogle ? "/setup?step=2" : "/api/connect-google?returnTo=/setup%3Fstep%3D2"}
-            className="inline-block rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+            className="inline-block rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
           >
             {hasGoogle ? "Continue" : "Connect Google"}
           </Link>
@@ -101,14 +101,14 @@ export default async function SetupPage({
       {step === "2" && (
         <section className="space-y-4">
           <h2 className="text-lg font-medium">Goals</h2>
-          <p className="text-zinc-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Add your focus areas. Use defaults or customize.
           </p>
           <ul className="space-y-2">
             {goals.map((g) => (
               <li
                 key={g.id}
-                className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2"
+                className="flex items-center gap-2 rounded-2xl border border-border/10 bg-surface/60 px-3 py-2 shadow-soft"
               >
                 <form action={updateGoal} className="flex-1 flex gap-2">
                   <input type="hidden" name="id" value={g.id} />
@@ -116,11 +116,11 @@ export default async function SetupPage({
                     type="text"
                     name="title"
                     defaultValue={g.title}
-                    className="flex-1 bg-transparent text-zinc-200 outline-none"
+                    className="flex-1 bg-transparent text-foreground outline-none"
                   />
                   <button
                     type="submit"
-                    className="text-xs text-amber-500 hover:text-amber-400"
+                    className="text-xs text-accent hover:text-accent/80"
                   >
                     Save
                   </button>
@@ -142,11 +142,11 @@ export default async function SetupPage({
               type="text"
               name="title"
               placeholder="Add a goal..."
-              className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-200 placeholder-zinc-500"
+              className="flex-1 rounded-xl border border-border/10 bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground"
             />
             <button
               type="submit"
-              className="rounded-lg bg-zinc-700 px-4 py-2 text-zinc-200 hover:bg-zinc-600"
+              className="rounded-xl bg-surface2/70 px-4 py-2 text-foreground hover:opacity-90"
             >
               Add
             </button>
@@ -156,7 +156,7 @@ export default async function SetupPage({
               <form action={addDefaultGoals}>
                 <button
                   type="submit"
-                  className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+                  className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
                 >
                   Use defaults
                 </button>
@@ -171,7 +171,7 @@ export default async function SetupPage({
             >
               <button
                 type="submit"
-                className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+                className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
               >
                 Continue
               </button>
@@ -183,16 +183,16 @@ export default async function SetupPage({
       {step === "3" && (
         <section className="space-y-4">
           <h2 className="text-lg font-medium">Declutter preferences</h2>
-          <p className="text-zinc-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Per-category rules: <strong>Label + digest</strong>, <strong>Archive after 48h</strong>,{" "}
             <strong>Move to Spam</strong>, or <strong>Never</strong>. Click each dropdown to choose. Auto-archive off by default—enable in{" "}
-            <Link href="/settings/declutter" className="text-amber-500 hover:underline">
+            <Link href="/settings/declutter" className="text-accent hover:underline">
               Settings → Declutter
             </Link>
             .
           </p>
           {categories.length === 0 ? (
-            <p className="text-zinc-500 text-sm">
+            <p className="text-muted-foreground text-sm">
               Complete step 2 (Continue) to add goals and categories—per-category rules will appear once you have categories.
             </p>
           ) : (
@@ -202,16 +202,16 @@ export default async function SetupPage({
                 return (
                   <li
                     key={c.id}
-                    className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2"
+                    className="flex items-center gap-3 rounded-2xl border border-border/10 bg-surface/60 px-3 py-2 shadow-soft"
                   >
-                    <span className="text-zinc-200 min-w-[100px]">{c.name}</span>
+                    <span className="text-foreground min-w-[100px]">{c.name}</span>
                     <form action={upsertCategoryDeclutterRule} className="flex gap-2">
                       <input type="hidden" name="categoryId" value={c.id} />
                       <input type="hidden" name="returnTo" value="/setup?step=3" />
                       <select
                         name="action"
                         defaultValue={rule?.action ?? "label_only"}
-                        className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-200"
+                        className="rounded-xl border border-border/10 bg-background px-2 py-1 text-sm text-foreground"
                       >
                       <option value="label_only">Label + digest</option>
                       <option value="archive_after_48h">Archive after 48h</option>
@@ -221,7 +221,7 @@ export default async function SetupPage({
                       </select>
                       <button
                         type="submit"
-                        className="text-xs text-amber-500 hover:text-amber-400"
+                        className="text-xs text-accent hover:text-accent/80"
                       >
                         Save
                       </button>
@@ -240,7 +240,7 @@ export default async function SetupPage({
           >
             <button
               type="submit"
-              className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+              className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
             >
               {hasDeclutter ? "Continue" : "Save (archive off) & continue"}
             </button>
@@ -251,16 +251,16 @@ export default async function SetupPage({
       {step === "4" && (
         <section className="space-y-4">
           <h2 className="text-lg font-medium">Categories</h2>
-          <p className="text-zinc-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Email categories for classification. Newsletters and Promotions go to Digest by default.
           </p>
           <ul className="space-y-2">
             {categories.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2"
+                className="flex items-center justify-between rounded-2xl border border-border/10 bg-surface/60 px-3 py-2 shadow-soft"
               >
-                <span className="text-zinc-200">{c.name}</span>
+                <span className="text-foreground">{c.name}</span>
                 <form action={deleteCategory}>
                   <input type="hidden" name="id" value={c.id} />
                   <button
@@ -280,11 +280,11 @@ export default async function SetupPage({
               name="name"
               placeholder="Add category..."
               required
-              className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-200 placeholder-zinc-500"
+              className="flex-1 rounded-xl border border-border/10 bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground"
             />
             <button
               type="submit"
-              className="rounded-lg bg-zinc-700 px-4 py-2 text-zinc-200 hover:bg-zinc-600"
+              className="rounded-xl bg-surface2/70 px-4 py-2 text-foreground hover:opacity-90"
             >
               Add
             </button>
@@ -294,7 +294,7 @@ export default async function SetupPage({
               <form action={addDefaultCategories}>
                 <button
                   type="submit"
-                  className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+                  className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
                 >
                   Use defaults
                 </button>
@@ -309,7 +309,7 @@ export default async function SetupPage({
             >
               <button
                 type="submit"
-                className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+                className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
               >
                 Finish
               </button>
@@ -318,8 +318,8 @@ export default async function SetupPage({
         </section>
       )}
 
-      <p className="text-zinc-500 text-sm">
-        <Link href="/brief" className="hover:text-zinc-400">
+      <p className="text-muted-foreground text-sm">
+        <Link href="/brief" className="hover:text-foreground">
           Skip setup →
         </Link>
       </p>

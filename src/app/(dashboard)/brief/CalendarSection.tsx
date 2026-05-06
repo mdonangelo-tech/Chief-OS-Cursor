@@ -53,40 +53,40 @@ export function CalendarSection({ events }: CalendarSectionProps) {
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg font-medium text-zinc-200">
+        <h2 className="text-lg font-medium text-foreground">
           Calendar (next 7 days)
         </h2>
         <button
           type="button"
           onClick={() => setExpanded((x) => !x)}
-          className="text-sm text-amber-500 hover:text-amber-400"
+          className="text-sm text-accent hover:text-accent/80"
         >
           {expanded ? "Collapse" : "Expand"}
         </button>
       </div>
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-        <p className="text-zinc-300 text-sm">{summary}</p>
+      <div className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft">
+        <p className="text-foreground/90 text-sm">{summary}</p>
       </div>
       {expanded && (
         <ul className="space-y-2">
           {events.map((e) => (
             <li
               key={e.id}
-              className="rounded border border-zinc-800/80 bg-zinc-900/30 px-4 py-2 text-zinc-400"
+              className="rounded-xl border border-border/10 bg-surface/40 px-4 py-2 text-muted-foreground"
             >
-              <span className="font-medium text-zinc-300">
+              <span className="font-medium text-foreground/90">
                 {text(e.title) || "(No title)"}
               </span>
-              <span className="text-zinc-500 text-sm ml-2">
+              <span className="text-muted-foreground text-sm ml-2">
                 {toDate(e.startAt).toLocaleString()} — {text(e.organizer) || "—"}
               </span>
               {e.flags.length > 0 && (
-                <span className="ml-2 text-amber-500/80 text-xs">
+                <span className="ml-2 text-accent/80 text-xs">
                   ({e.flags.join(", ")})
                 </span>
               )}
               {e.explainJson?.reason && (
-                <span className="ml-2 text-zinc-600 text-xs italic block mt-1">
+                <span className="ml-2 text-muted-foreground/80 text-xs italic block mt-1">
                   {e.explainJson.reason}
                 </span>
               )}

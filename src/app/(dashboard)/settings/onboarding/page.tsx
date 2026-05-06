@@ -23,26 +23,26 @@ export default async function SettingsOnboardingPage() {
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Onboarding</h1>
-        <p className="text-zinc-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           Re-run the onboarding scan to refresh insights or include newly connected accounts.
         </p>
       </div>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 space-y-2 text-sm text-zinc-400">
+      <div className="rounded-2xl border border-border/10 bg-surface/60 p-5 space-y-2 text-sm text-muted-foreground shadow-soft">
         <div>
-          <span className="text-zinc-500">Last run:</span>{" "}
+          <span className="text-muted-foreground">Last run:</span>{" "}
           {lastRun ? (
-            <span className="text-zinc-200">
+            <span className="text-foreground">
               <LocalTime value={lastRun.createdAt} /> · {lastRun.status}
             </span>
           ) : (
-            <span className="text-zinc-500">None yet</span>
+            <span className="text-muted-foreground">None yet</span>
           )}
         </div>
         {lastRun?.completedAt && (
           <div>
-            <span className="text-zinc-500">Completed:</span>{" "}
-            <span className="text-zinc-200">
+            <span className="text-muted-foreground">Completed:</span>{" "}
+            <span className="text-foreground">
               <LocalTime value={lastRun.completedAt} />
             </span>
           </div>
@@ -52,12 +52,12 @@ export default async function SettingsOnboardingPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/onboarding"
-          className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+          className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
         >
           Re-run analysis
         </Link>
         {lastRun && <SettingsOnboardingUndoClient runId={lastRun.id} />}
-        <Link href="/settings/accounts" className="text-sm text-zinc-400 hover:text-zinc-200">
+        <Link href="/settings/accounts" className="text-sm text-muted-foreground hover:text-foreground">
           Add another account
         </Link>
       </div>

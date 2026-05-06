@@ -74,14 +74,14 @@ export default async function CategoriesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold">Categories</h1>
-        <p className="text-zinc-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           Create, rename, and organize categories. Set parent for subcategories.
           Protected categories are never auto-archived.
         </p>
       </div>
 
       <section>
-        <h2 className="text-lg font-medium text-zinc-200 mb-3">Add category</h2>
+        <h2 className="text-lg font-medium text-foreground mb-3">Add category</h2>
         <form action={addCategory} className="flex gap-2">
           <input type="hidden" name="returnTo" value="/settings/categories" />
           <input
@@ -89,11 +89,11 @@ export default async function CategoriesPage() {
             name="name"
             placeholder="Category name"
             required
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-200 placeholder-zinc-500 w-48"
+            className="rounded-xl border border-border/10 bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground w-48"
           />
           <button
             type="submit"
-            className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500"
+            className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90"
           >
             Add
           </button>
@@ -102,24 +102,24 @@ export default async function CategoriesPage() {
 
       {suggestions.length > 0 && (
         <section>
-          <h2 className="text-lg font-medium text-zinc-200 mb-3">Suggestions</h2>
-          <p className="text-zinc-500 text-sm mb-2">
+          <h2 className="text-lg font-medium text-foreground mb-3">Suggestions</h2>
+          <p className="text-muted-foreground text-sm mb-2">
             Top domains by volume — add as category to classify
           </p>
           <ul className="space-y-2">
             {suggestions.map((s) => (
               <li
                 key={s.value}
-                className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-2"
+                className="flex items-center justify-between gap-4 rounded-2xl border border-border/10 bg-surface/60 px-4 py-2 shadow-soft"
               >
-                <span className="text-zinc-300">{s.value}</span>
-                <span className="text-zinc-500 text-sm">{s.count} emails</span>
+                <span className="text-foreground">{s.value}</span>
+                <span className="text-muted-foreground text-sm">{s.count} emails</span>
                 <form action={addCategory}>
                   <input type="hidden" name="returnTo" value="/settings/categories" />
                   <input type="hidden" name="name" value={s.value} />
                   <button
                     type="submit"
-                    className="text-sm text-amber-500 hover:text-amber-400"
+                    className="text-sm text-accent hover:text-accent/80"
                   >
                     Add category
                   </button>
@@ -131,15 +131,15 @@ export default async function CategoriesPage() {
       )}
 
       <section>
-        <h2 className="text-lg font-medium text-zinc-200 mb-3">All categories</h2>
+        <h2 className="text-lg font-medium text-foreground mb-3">All categories</h2>
         {categories.length === 0 ? (
-          <p className="text-zinc-500 text-sm">No categories yet. Add one above or in Setup.</p>
+          <p className="text-muted-foreground text-sm">No categories yet. Add one above.</p>
         ) : (
           <ul className="space-y-2">
             {categories.map((c) => (
               <li
                 key={c.id}
-                className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3"
+                className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft"
               >
                 <form action={renameCategory} className="flex items-center gap-2">
                   <input type="hidden" name="id" value={c.id} />
@@ -147,9 +147,9 @@ export default async function CategoriesPage() {
                     type="text"
                     name="name"
                     defaultValue={c.name}
-                    className="bg-transparent text-zinc-200 outline-none border-b border-transparent hover:border-zinc-600 w-32"
+                    className="bg-transparent text-foreground outline-none border-b border-transparent hover:border-border/40 w-32"
                   />
-                  <button type="submit" className="text-xs text-zinc-500 hover:text-zinc-400">
+                  <button type="submit" className="text-xs text-muted-foreground hover:text-foreground">
                     Rename
                   </button>
                 </form>
@@ -158,7 +158,7 @@ export default async function CategoriesPage() {
                   <select
                     name="parentId"
                     defaultValue={c.parentId ?? ""}
-                    className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm text-zinc-300"
+                    className="rounded-xl border border-border/10 bg-background px-2 py-1 text-sm text-foreground"
                   >
                     <option value="">— None (root)</option>
                     {roots.filter((p) => p.id !== c.id).map((p) => (
@@ -167,7 +167,7 @@ export default async function CategoriesPage() {
                       </option>
                     ))}
                   </select>
-                  <button type="submit" className="text-xs text-zinc-500 hover:text-zinc-400">
+                  <button type="submit" className="text-xs text-muted-foreground hover:text-foreground">
                     Set parent
                   </button>
                 </form>
@@ -177,8 +177,8 @@ export default async function CategoriesPage() {
                     type="submit"
                     className={`text-xs px-2 py-0.5 rounded ${
                       c.protectedFromAutoArchive
-                        ? "bg-amber-900/50 text-amber-200"
-                        : "bg-zinc-800 text-zinc-500 hover:text-zinc-400"
+                        ? "bg-accent/15 text-accent"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {c.protectedFromAutoArchive ? "Protected" : "Not protected"}
@@ -191,12 +191,12 @@ export default async function CategoriesPage() {
         )}
       </section>
 
-      <p className="text-zinc-500 text-sm">
-        <Link href="/brief" className="hover:text-zinc-400">
+      <p className="text-muted-foreground text-sm">
+        <Link href="/brief" className="hover:text-foreground">
           ← Back to Brief
         </Link>
         {" · "}
-        <Link href="/settings/declutter" className="hover:text-zinc-400">
+        <Link href="/settings/declutter" className="hover:text-foreground">
           Declutter rules
         </Link>
       </p>
