@@ -48,6 +48,7 @@ export default async function AuditPage() {
           from_: true,
           subject: true,
           snippet: true,
+          date: true,
           labels: true,
           category: { select: { name: true } },
         },
@@ -64,6 +65,9 @@ export default async function AuditPage() {
         <h1 className="text-2xl font-semibold">Gmail action history</h1>
         <p className="text-zinc-400 mt-1">
           Inspect past archive actions and undo when needed.
+        </p>
+        <p className="text-zinc-600 text-xs mt-1">
+          Note: Gmail labels list messages by <strong>received date</strong>. This page lists actions by <strong>archived/spammed time</strong>.
         </p>
         {accountsInLogs.length > 0 && (
           <div className="mt-2 text-zinc-500 text-sm">
@@ -135,6 +139,9 @@ export default async function AuditPage() {
                         {decodeHtmlEntities(email.subject ?? "") || "(No subject)"}
                       </div>
                       <div className="text-zinc-500 text-xs mt-0.5 truncate">{decodeHtmlEntities(email.from_)}</div>
+                      <div className="text-zinc-600 text-xs mt-0.5">
+                        Received {email.date.toLocaleString()}
+                      </div>
                       {email.snippet && (
                         <div className="text-zinc-600 text-xs mt-1 line-clamp-2">{decodeHtmlEntities(email.snippet)}</div>
                       )}
