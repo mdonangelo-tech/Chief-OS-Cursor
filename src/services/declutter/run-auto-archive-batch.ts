@@ -99,7 +99,8 @@ export async function runAutoArchiveBatch(
       confidence: true,
       explainJson: true,
     },
-    orderBy: { date: "asc" },
+    // Prefer newest eligible first so a large backlog doesn't make it look "stuck" on old mail.
+    orderBy: { date: "desc" },
     take: 2000,
   });
 
