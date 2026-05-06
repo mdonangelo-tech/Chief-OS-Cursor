@@ -22,13 +22,13 @@ export default async function DeclutterPreviewPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Declutter preview</h1>
-          <p className="text-zinc-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             Read-only preview of categorization + declutter decisions for emails currently in your inbox.
           </p>
         </div>
         <Link
           href="/settings/declutter"
-          className="text-sm text-zinc-500 hover:text-zinc-300"
+          className="text-sm text-muted-foreground hover:text-foreground"
         >
           ← Back
         </Link>
