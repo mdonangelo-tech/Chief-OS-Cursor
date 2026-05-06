@@ -50,6 +50,14 @@ export default async function SettingsHomePage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link
+          href="/settings/personal"
+          className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:bg-zinc-900/50 transition-colors"
+        >
+          <div className="font-medium text-zinc-200">Personal context</div>
+          <div className="text-sm text-zinc-500 mt-1">Goals and preferences used to shape your Brief.</div>
+        </Link>
+
+        <Link
           href="/settings/accounts"
           className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-5 hover:bg-zinc-900/50 transition-colors"
         >

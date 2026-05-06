@@ -161,6 +161,13 @@ export default async function AccountsPage({
         {googleAccounts.length > 0 && (
           <SyncButtons />
         )}
+        {googleAccounts.length > 0 && (
+          <div className="text-sm text-zinc-500">
+            <Link href="/settings/accounts/preferences" className="text-amber-500 hover:underline">
+              Account preferences →
+            </Link>
+          </div>
+        )}
         {hasGoogleConfig ? (
           <a
             href="/api/connect-google"

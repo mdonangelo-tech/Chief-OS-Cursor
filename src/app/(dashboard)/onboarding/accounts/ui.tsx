@@ -21,10 +21,12 @@ export function OnboardingAccountsClient({
   items,
   dbWarning,
   readOnly,
+  mode = "onboarding",
 }: {
   items: Item[];
   dbWarning: string | null;
   readOnly: boolean;
+  mode?: "onboarding" | "settings";
 }) {
   const [rows, setRows] = useState<Item[]>(items);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -82,7 +84,9 @@ export function OnboardingAccountsClient({
       <div>
         <h1 className="text-2xl font-semibold">Accounts</h1>
         <p className="text-zinc-400 mt-1">
-          Include all accounts by default. You can re-run onboarding later after adding more.
+          {mode === "settings"
+            ? "Set account type and primary account. These preferences shape the Brief and onboarding scans."
+            : "Include all accounts by default. You can re-run onboarding later after adding more."}
         </p>
       </div>
 
@@ -90,10 +94,6 @@ export function OnboardingAccountsClient({
         <div className="rounded-xl border border-amber-800 bg-amber-950/20 p-4 text-sm text-amber-200">
           <div className="font-medium">Setup required</div>
           <div className="text-amber-200/80 mt-1">{dbWarning}</div>
-          <div className="text-xs text-amber-200/70 mt-2">
-            This page will stop erroring once the production DB migrations run (Vercel build now runs
-            `prisma migrate deploy`).
-          </div>
         </div>
       )}
 
@@ -177,15 +177,23 @@ export function OnboardingAccountsClient({
       </div>
 
       <div className="flex items-center gap-3">
-        <Link
-          href="/onboarding/goals"
-          className="inline-block rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
-        >
-          Continue
-        </Link>
-        <Link href="/settings/accounts" className="text-sm text-zinc-400 hover:text-zinc-200">
-          Add another account
-        </Link>
+        {mode === "onboarding" ? (
+          <>
+            <Link
+              href="/onboarding/goals"
+              className="inline-block rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-500"
+            >
+              Continue
+            </Link>
+            <Link href="/settings/accounts" className="text-sm text-zinc-400 hover:text-zinc-200">
+              Add another account
+            </Link>
+          </>
+        ) : (
+          <Link href="/settings/accounts" className="text-sm text-zinc-400 hover:text-zinc-200">
+            Manage connected accounts →
+          </Link>
+        )}
       </div>
 
       {toast && (

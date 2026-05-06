@@ -9,9 +9,11 @@ type Goal = { key: string; label: string; enabled: boolean; notes: string | null
 export function OnboardingGoalsClient({
   initialGoals,
   initialFreeText,
+  mode = "onboarding",
 }: {
   initialGoals: Goal[];
   initialFreeText: string;
+  mode?: "onboarding" | "settings";
 }) {
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [freeText, setFreeText] = useState<string>(initialFreeText);
@@ -46,9 +48,13 @@ export function OnboardingGoalsClient({
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Goals</h1>
+        <h1 className="text-2xl font-semibold">
+          {mode === "settings" ? "Personal context" : "Goals"}
+        </h1>
         <p className="text-zinc-400 mt-1">
-          What are you optimizing for over the next 30 days?
+          {mode === "settings"
+            ? "What are you optimizing for right now? This helps ChiefOS prioritize your Brief."
+            : "What are you optimizing for over the next 30 days?"}
         </p>
       </div>
 
@@ -113,9 +119,11 @@ export function OnboardingGoalsClient({
           >
             {saving ? "Saving…" : "Save goals"}
           </button>
-          <Link href="/onboarding/scan" className="text-sm text-zinc-400 hover:text-zinc-200">
-            Continue
-          </Link>
+          {mode === "onboarding" && (
+            <Link href="/onboarding/scan" className="text-sm text-zinc-400 hover:text-zinc-200">
+              Continue
+            </Link>
+          )}
         </div>
       </div>
 
