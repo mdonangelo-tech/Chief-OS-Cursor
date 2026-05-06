@@ -219,12 +219,12 @@ export default async function DeclutterPage({
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-semibold">Declutter policy</h1>
-          <p className="text-zinc-400 mt-1">Per-category rules and auto-archive.</p>
+          <p className="text-muted-foreground mt-1">Per-category rules and auto-archive.</p>
         </div>
         <div className="rounded-lg bg-red-950/50 border border-red-800 px-4 py-3 text-red-300 text-sm">
           {dbError}
         </div>
-        <p className="text-zinc-500 text-sm">
+        <p className="text-muted-foreground text-sm">
           If this keeps happening in production, Neon may be waking up or the database URL may be
           misconfigured.
         </p>
@@ -310,25 +310,25 @@ export default async function DeclutterPage({
             {ruleError}
           </div>
         )}
-        <p className="text-zinc-400 mt-1">
+        <p className="text-muted-foreground mt-1">
           Per-category rules and auto-archive. Archived emails get the{" "}
           <strong>ChiefOS/Archived</strong> label.{" "}
           <a
             href={GMAIL_CHIEFOS_ARCHIVED_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-amber-500 hover:underline"
+            className="text-accent hover:underline"
           >
             View in Gmail
           </a>{" "}
           · Undo in{" "}
-          <Link href="/audit" className="text-amber-500 hover:underline">
+          <Link href="/audit" className="text-accent hover:underline">
             Audit
           </Link>
           .
         </p>
-        <p className="text-zinc-500 text-sm mt-2">
-          <Link href="/settings/declutter/preview" className="text-amber-500 hover:underline">
+        <p className="text-muted-foreground text-sm mt-2">
+          <Link href="/settings/declutter/preview" className="text-accent hover:underline">
             Preview decisions →
           </Link>
         </p>
@@ -336,7 +336,7 @@ export default async function DeclutterPage({
 
       <section className="space-y-4">
         <h2 className="text-lg font-medium">Auto-archive</h2>
-        <p className="text-zinc-400 text-sm">
+        <p className="text-muted-foreground text-sm">
           When enabled, emails matching archive rules are auto-archived (with audit). Protected
           categories never auto-archive. Off by default.
         </p>
@@ -359,30 +359,30 @@ export default async function DeclutterPage({
                 <input type="hidden" name="enabled" value="true" />
                 <button
                   type="submit"
-                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-500"
+                  className="rounded-xl bg-accent px-4 py-2 text-sm text-accent-foreground hover:opacity-90"
                 >
                   I understand, enable
                 </button>
               </form>
             }
           />
-          <span className="text-zinc-500 text-sm">
+          <span className="text-muted-foreground text-sm">
             {declutterPref?.autoArchiveEnabled ? "On" : "Off"}
           </span>
         </div>
-        <div className="mt-4 pt-4 border-t border-zinc-800">
-          <h3 className="text-sm font-medium text-zinc-300 mb-2">Upcoming auto-archive</h3>
+        <div className="mt-4 pt-4 border-t border-border/10">
+          <h3 className="text-sm font-medium text-foreground/90 mb-2">Upcoming auto-archive</h3>
           <AutoArchiveRunner />
         </div>
-        <div className="mt-4 pt-4 border-t border-zinc-800">
-          <h3 className="text-sm font-medium text-zinc-300 mb-2">Archive by age (all inbox)</h3>
+        <div className="mt-4 pt-4 border-t border-border/10">
+          <h3 className="text-sm font-medium text-foreground/90 mb-2">Archive by age (all inbox)</h3>
           <ArchiveByDaysRunner />
         </div>
       </section>
 
       <section className="space-y-4">
         <h2 className="text-lg font-medium">Per-category actions</h2>
-        <p className="text-zinc-400 text-sm">
+        <p className="text-muted-foreground text-sm">
           <strong>Label + digest</strong>: Apply labels, show in Digest.{" "}
           <strong>Archive after 48h</strong>: Auto-archive 48h+ when enabled.{" "}
           <strong>Archive after N days</strong>: Auto-archive when rule is on.{" "}
@@ -397,35 +397,35 @@ export default async function DeclutterPage({
               name="name"
               placeholder="New category name"
               required
-              className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 w-40"
+              className="rounded-xl border border-border/10 bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground w-40"
             />
             <button
               type="submit"
-              className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500"
+              className="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90"
             >
               Create category
             </button>
           </form>
           <Link
             href={params.import === "gmail" ? "/settings/declutter" : "/settings/declutter?import=gmail"}
-            className="rounded-lg border border-zinc-600 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
+            className="rounded-xl border border-border/10 bg-surface/50 px-3 py-1.5 text-sm text-foreground hover:bg-surface2/60"
           >
             {params.import === "gmail" ? "← Back" : "Import from Gmail"}
           </Link>
           <Link
             href="/settings/categories"
-            className="text-sm text-zinc-500 hover:text-zinc-400"
+            className="text-sm text-muted-foreground hover:text-foreground"
           >
             Manage all categories →
           </Link>
         </div>
         {params.import === "gmail" && (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 mt-4">
+          <div className="rounded-2xl border border-border/10 bg-surface/60 p-4 mt-4 shadow-soft">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium text-zinc-300">Gmail labels (all accounts)</h3>
+              <h3 className="text-sm font-medium text-foreground/90">Gmail labels (all accounts)</h3>
               <Link
                 href="/settings/declutter"
-                className="text-zinc-500 hover:text-zinc-300 text-sm"
+                className="text-muted-foreground hover:text-foreground text-sm"
                 title="Close"
               >
                 ✕ Close
@@ -447,7 +447,7 @@ export default async function DeclutterPage({
                   if (labels.length === 0) return null;
                   return (
                     <div key={accResult.accountId}>
-                      <div className="text-xs font-medium text-zinc-500 mb-2 truncate">
+                      <div className="text-xs font-medium text-muted-foreground mb-2 truncate">
                         {accountEmail}
                       </div>
                       <ul className="space-y-2">
@@ -456,9 +456,9 @@ export default async function DeclutterPage({
                           return (
                             <li
                               key={`${accResult.accountId}-${label.id}`}
-                              className="flex items-center justify-between gap-3 rounded border border-zinc-700 px-3 py-2"
+                              className="flex items-center justify-between gap-3 rounded-xl border border-border/10 bg-surface/40 px-3 py-2"
                             >
-                              <span className="text-zinc-200 truncate">{label.name}</span>
+                              <span className="text-foreground truncate">{label.name}</span>
                               {linked ? (
                                 <span className="text-emerald-500 text-xs shrink-0">Linked</span>
                               ) : (
@@ -467,7 +467,7 @@ export default async function DeclutterPage({
                                   <input type="hidden" name="name" value={label.name} />
                                   <button
                                     type="submit"
-                                    className="text-sm text-amber-500 hover:text-amber-400"
+                                    className="text-sm text-accent hover:text-accent/80"
                                   >
                                     Add as category
                                   </button>
@@ -482,17 +482,17 @@ export default async function DeclutterPage({
                 })}
               </div>
             ) : gmailLabelsByAccountResult ? (
-              <p className="text-zinc-500 text-sm">No user labels in Gmail. Create labels in Gmail first.</p>
+              <p className="text-muted-foreground text-sm">No user labels in Gmail. Create labels in Gmail first.</p>
             ) : accounts.length === 0 ? (
-              <p className="text-zinc-500 text-sm">Connect a Google account first.</p>
+              <p className="text-muted-foreground text-sm">Connect a Google account first.</p>
             ) : null}
           </div>
         )}
         {categories.length === 0 ? (
-          <p className="text-zinc-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             Add categories in{" "}
-            <Link href="/setup?step=4" className="text-amber-500 hover:underline">
-              Setup
+            <Link href="/settings/categories" className="text-accent hover:underline">
+              Categories
             </Link>{" "}
             to configure rules.
           </p>
@@ -516,19 +516,19 @@ export default async function DeclutterPage({
 
       <section id="suggested-actions" className="space-y-4 scroll-mt-6">
         <h2 className="text-lg font-medium">Suggested actions</h2>
-        <p className="text-zinc-400 text-sm">
+        <p className="text-muted-foreground text-sm">
           ChiefOS suggests rules based on what you’ve been receiving. Approve once and it will apply automatically next time.
         </p>
         {suggestions.length > 0 ? (
           <>
             <div className="flex flex-wrap items-center gap-3 mb-3">
-              <h3 className="text-base font-medium text-zinc-300">Suggested rules</h3>
-              <span className="rounded-full bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-zinc-400">
+              <h3 className="text-base font-medium text-foreground/90">Suggested rules</h3>
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                 {suggestions.length} to review
               </span>
             </div>
-            <p className="text-zinc-500 text-sm mb-4">
-              <strong className="text-emerald-500/90">Accept</strong> = looks good, clear it. Choose a category and click <strong className="text-amber-400/90">Create person rule</strong> or <strong className="text-amber-400/90">Create domain rule</strong> to save.
+            <p className="text-muted-foreground text-sm mb-4">
+              <strong className="text-emerald-500/90">Accept</strong> = looks good, clear it. Choose a category and click <strong className="text-accent">Create person rule</strong> or <strong className="text-accent">Create domain rule</strong> to save.
             </p>
             <ul className="space-y-3">
               {suggestions.map((s) => (
@@ -549,9 +549,9 @@ export default async function DeclutterPage({
             </ul>
           </>
         ) : (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/30 px-6 py-8 text-center">
+          <div className="rounded-2xl border border-border/10 bg-surface/50 px-6 py-8 text-center shadow-soft">
             <p className="text-emerald-400/90 font-medium">All clear!</p>
-            <p className="text-zinc-500 text-sm mt-1">No rules to review. Your queue is empty.</p>
+            <p className="text-muted-foreground text-sm mt-1">No rules to review. Your queue is empty.</p>
           </div>
         )}
       </section>
@@ -559,8 +559,8 @@ export default async function DeclutterPage({
       <section id="rules" className="space-y-4 scroll-mt-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h3 className="text-base font-medium text-zinc-300">Rules</h3>
-            <div className="text-xs text-zinc-500 mt-1">
+            <h3 className="text-base font-medium text-foreground/90">Rules</h3>
+            <div className="text-xs text-muted-foreground mt-1">
               {ruleType === "all" ? (
                 <>
                   Sender rules: {personRuleCount.toLocaleString()} · Domain rules: {orgRuleCount.toLocaleString()}
@@ -575,36 +575,36 @@ export default async function DeclutterPage({
 
           <form method="get" className="flex flex-wrap items-center gap-2 text-sm">
             <input type="hidden" name="import" value={params.import ?? ""} />
-            <label className="text-zinc-500">
+            <label className="text-muted-foreground">
               Type{" "}
               <select
                 name="ruleType"
                 defaultValue={ruleType}
-                className="ml-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-200"
+                className="ml-1 rounded-xl border border-border/10 bg-background px-2 py-1 text-foreground"
               >
                 <option value="all">All</option>
                 <option value="person">Sender</option>
                 <option value="org">Domain</option>
               </select>
             </label>
-            <label className="text-zinc-500">
+            <label className="text-muted-foreground">
               Sort{" "}
               <select
                 name="rulesSort"
                 defaultValue={rulesSort}
-                className="ml-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-200"
+                className="ml-1 rounded-xl border border-border/10 bg-background px-2 py-1 text-foreground"
               >
                 <option value="recent">Most recent</option>
                 <option value="alpha">Alphabetical</option>
                 <option value="category">Category</option>
               </select>
             </label>
-            <label className="text-zinc-500">
+            <label className="text-muted-foreground">
               Show{" "}
               <select
                 name="rulesPageSize"
                 defaultValue={rulesPageSizeRaw}
-                className="ml-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-200"
+                className="ml-1 rounded-xl border border-border/10 bg-background px-2 py-1 text-foreground"
               >
                 <option value="10">10</option>
                 <option value="25">25</option>
@@ -616,12 +616,12 @@ export default async function DeclutterPage({
               name="q"
               defaultValue={ruleQ}
               placeholder="Search sender/domain…"
-              className="w-44 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-zinc-200 placeholder-zinc-600"
+              className="w-44 rounded-xl border border-border/10 bg-background px-2 py-1 text-foreground placeholder:text-muted-foreground"
             />
             <input type="hidden" name="rulesPage" value="1" />
             <button
               type="submit"
-              className="rounded-lg border border-zinc-700 px-3 py-1 text-zinc-200 hover:bg-zinc-800"
+              className="rounded-xl border border-border/10 bg-surface/50 px-3 py-1 text-foreground hover:bg-surface2/60"
             >
               Apply
             </button>
@@ -629,7 +629,7 @@ export default async function DeclutterPage({
         </div>
 
         {ruleType !== "all" && rulesPageSize !== "all" && rulesTotalPages > 1 && (
-          <div className="flex items-center justify-between text-xs text-zinc-500">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
               Page {rulesPageClamped} of {rulesTotalPages}
             </span>
@@ -643,7 +643,7 @@ export default async function DeclutterPage({
                   rulesPageSize: rulesPageSizeRaw,
                   rulesPage: Math.max(1, rulesPageClamped - 1),
                 })}
-                className={`rounded border border-zinc-800 px-2 py-1 hover:bg-zinc-900 ${
+                className={`rounded-xl border border-border/10 bg-surface/50 px-2 py-1 hover:bg-surface2/60 ${
                   rulesPageClamped <= 1 ? "pointer-events-none opacity-40" : ""
                 }`}
               >
@@ -658,7 +658,7 @@ export default async function DeclutterPage({
                   rulesPageSize: rulesPageSizeRaw,
                   rulesPage: Math.min(rulesTotalPages, rulesPageClamped + 1),
                 })}
-                className={`rounded border border-zinc-800 px-2 py-1 hover:bg-zinc-900 ${
+                className={`rounded-xl border border-border/10 bg-surface/50 px-2 py-1 hover:bg-surface2/60 ${
                   rulesPageClamped >= rulesTotalPages ? "pointer-events-none opacity-40" : ""
                 }`}
               >
@@ -670,9 +670,9 @@ export default async function DeclutterPage({
 
         {ruleType !== "org" && (
           <>
-            <h4 className="text-sm font-medium text-zinc-300">Sender rules</h4>
+            <h4 className="text-sm font-medium text-foreground/90">Sender rules</h4>
         {personRules.length === 0 ? (
-          <p className="text-zinc-500 text-sm">No sender rules yet.</p>
+          <p className="text-muted-foreground text-sm">No sender rules yet.</p>
         ) : (
           <ul className="space-y-2">
             {personRules.map((r) => (
@@ -693,9 +693,9 @@ export default async function DeclutterPage({
 
         {ruleType !== "person" && (
           <>
-            <h4 className="text-sm font-medium text-zinc-300 mt-4">Domain rules</h4>
+            <h4 className="text-sm font-medium text-foreground/90 mt-4">Domain rules</h4>
         {orgRules.length === 0 ? (
-          <p className="text-zinc-500 text-sm">No domain rules yet.</p>
+          <p className="text-muted-foreground text-sm">No domain rules yet.</p>
         ) : (
           <ul className="space-y-2">
             {orgRules.map((r) => (
@@ -715,8 +715,8 @@ export default async function DeclutterPage({
         )}
       </section>
 
-      <p className="text-zinc-500 text-sm">
-        <Link href="/brief" className="hover:text-zinc-400">
+      <p className="text-muted-foreground text-sm">
+        <Link href="/brief" className="hover:text-foreground">
           ← Back to Brief
         </Link>
       </p>
