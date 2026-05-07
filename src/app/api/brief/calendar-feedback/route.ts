@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { withApiGuard } from "@/lib/api/api-guard";
 
 type Body = {
-  emailEventId: string;
-  feedback: "dismiss" | "acknowledge" | "not_important";
+  calendarEventId: string;
+  feedback: "hide";
 };
 
 async function postImpl(req: NextRequest) {
@@ -21,34 +21,35 @@ async function postImpl(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const emailEventId = (body.emailEventId ?? "").trim();
-  if (!emailEventId) {
-    return NextResponse.json({ ok: false, error: "Missing emailEventId" }, { status: 400 });
+  const calendarEventId = (body.calendarEventId ?? "").trim();
+  if (!calendarEventId) {
+    return NextResponse.json({ ok: false, error: "Missing calendarEventId" }, { status: 400 });
   }
 
-  const feedback = body.feedback;
-  if (feedback !== "dismiss" && feedback !== "acknowledge" && feedback !== "not_important") {
+  if (body.feedback !== "hide") {
     return NextResponse.json({ ok: false, error: "Invalid feedback" }, { status: 400 });
   }
 
-  const ev = await prisma.emailEvent.findFirst({
+  const ev = await prisma.calendarEvent.findFirst({
     where: {
-      id: emailEventId,
+      id: calendarEventId,
       googleAccount: { userId: session.user.id },
     },
-    select: { id: true },
+    select: { id: true, explainJson: true },
   });
   if (!ev) {
     return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
   }
 
-  const now = new Date();
-  await prisma.emailEvent.update({
+  const prevExplain = (typeof ev.explainJson === "object" && ev.explainJson) || {};
+  const explainJson = {
+    ...(prevExplain as Record<string, unknown>),
+    briefHiddenAt: new Date().toISOString(),
+  };
+
+  await prisma.calendarEvent.update({
     where: { id: ev.id },
-    data:
-      feedback === "dismiss" || feedback === "acknowledge"
-        ? { briefDismissedAt: now }
-        : { briefNotImportantAt: now },
+    data: { explainJson },
   });
 
   return NextResponse.json({ ok: true });

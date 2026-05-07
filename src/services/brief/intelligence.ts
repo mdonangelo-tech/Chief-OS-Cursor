@@ -6,6 +6,8 @@ export type PriorityEmailInput = {
   actionType: string | null;
   confidence: number | null;
   categoryName: string | null;
+  senderDomain?: string | null;
+  fromEmail?: string | null;
   briefDismissedAt?: Date | string | null;
   briefNotImportantAt?: Date | string | null;
   explainJson?: Record<string, unknown> | null;
@@ -31,15 +33,22 @@ export function isLowSignalPriorityCategoryName(
   return excludePriorityCategories.some((c) => n.includes(c.toLowerCase()));
 }
 
-function hasSuppression(e: PriorityEmailInput): boolean {
-  return !!(e.briefDismissedAt || e.briefNotImportantAt);
+function isHandled(e: PriorityEmailInput): boolean {
+  return !!e.briefDismissedAt;
+}
+
+function isNotImportant(e: PriorityEmailInput): boolean {
+  return !!e.briefNotImportantAt;
 }
 
 export function computePriorityScore(
   e: PriorityEmailInput,
   opts: { excludePriorityCategories: string[]; boostCategories: string[] }
 ): number {
-  if (hasSuppression(e)) return 0;
+  // Handled/acknowledged means: remove from active attention.
+  if (isHandled(e)) return 0;
+  // Not important means: this item should not resurface unchanged.
+  if (isNotImportant(e)) return 0;
   const cat = e.categoryName ?? "";
   const imp = e.importanceScore ?? 0;
   const needs = e.needsAction ?? false;
@@ -141,6 +150,19 @@ export function selectTopPriorities(
   const allowLowSignalIfImportanceAtLeast = opts.allowLowSignalIfImportanceAtLeast ?? 0.9;
   const minScore = opts.minScore ?? 0.6;
 
+  const notImportantSenders = new Set(
+    emails
+      .filter((e) => !!e.briefNotImportantAt)
+      .map((e) => (e.fromEmail ?? "").toLowerCase().trim())
+      .filter(Boolean)
+  );
+  const notImportantDomains = new Set(
+    emails
+      .filter((e) => !!e.briefNotImportantAt)
+      .map((e) => (e.senderDomain ?? "").toLowerCase().trim())
+      .filter(Boolean)
+  );
+
   const candidates = emails.filter((e) => {
     const imp = e.importanceScore ?? 0;
     const needs = e.needsAction ?? false;
@@ -157,7 +179,21 @@ export function selectTopPriorities(
 
   const scored = candidates.map((e) => ({
     id: e.id,
-    score: computePriorityScore(e, opts),
+    score: (() => {
+      let s = computePriorityScore(e, opts);
+      // Lightweight learning: if you've marked a sender/domain as \"not important\",
+      // de-prioritize similar items (while still allowing true action-needed items through).
+      if (s > 0) {
+        const needs = e.needsAction ?? false;
+        if (!needs) {
+          const fromKey = (e.fromEmail ?? "").toLowerCase().trim();
+          const domainKey = (e.senderDomain ?? "").toLowerCase().trim();
+          if (fromKey && notImportantSenders.has(fromKey)) s -= 0.55;
+          else if (domainKey && notImportantDomains.has(domainKey)) s -= 0.35;
+        }
+      }
+      return Math.max(0, s);
+    })(),
     explanation: buildPriorityExplanation(e, opts),
     importanceScore: e.importanceScore ?? 0,
   }));

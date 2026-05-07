@@ -20,7 +20,7 @@ export default async function SettingsHomePage() {
   ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <div>
         <h1 className="text-2xl font-semibold">Settings</h1>
         <p className="text-muted-foreground mt-1">Make ChiefOS work the way you do.</p>
@@ -48,56 +48,155 @@ export default async function SettingsHomePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link
-          href="/settings/personal"
-          className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
-        >
-          <div className="font-medium text-foreground">Personal context</div>
-          <div className="text-sm text-muted-foreground mt-1">Goals and preferences used to shape your Brief.</div>
-        </Link>
+      <div className="space-y-10">
+        <section className="space-y-3">
+          <h2 className="text-[11px] uppercase tracking-wide text-muted-foreground/70">
+            Personal
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Link
+              href="/settings/personal"
+              className="group rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground">Personal context</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Goals and preferences used to shape your Brief.
+                  </div>
+                </div>
+                <span className="text-muted-foreground group-hover:text-foreground transition-colors">
+                  →
+                </span>
+              </div>
+            </Link>
+          </div>
+        </section>
 
-        <Link
-          href="/settings/accounts"
-          className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
-        >
-          <div className="font-medium text-foreground">Accounts</div>
-          <div className="text-sm text-muted-foreground mt-1">Connect Gmail + Calendar and manage sync.</div>
-        </Link>
+        <section className="space-y-3">
+          <h2 className="text-[11px] uppercase tracking-wide text-muted-foreground/70">
+            Workspace
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Link
+              href="/settings/accounts"
+              className="group rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground">Accounts</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Connect Gmail + Calendar and manage sync.
+                  </div>
+                </div>
+                <span className="text-muted-foreground group-hover:text-foreground transition-colors">
+                  →
+                </span>
+              </div>
+            </Link>
 
-        <Link
-          href="/settings/declutter"
-          className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
-        >
-          <div className="font-medium text-foreground">Declutter</div>
-          <div className="text-sm text-muted-foreground mt-1">Automation policies, rules, and review queue.</div>
-        </Link>
+            <Link
+              href="/settings/workspace-sync"
+              className="group rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground">Workspace &amp; Sync</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Refresh behavior, morning prep, and sync preferences.
+                  </div>
+                </div>
+                <span className="text-muted-foreground group-hover:text-foreground transition-colors">
+                  →
+                </span>
+              </div>
+            </Link>
+          </div>
+        </section>
 
-        <Link
-          href="/settings/categories"
-          className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
-        >
-          <div className="font-medium text-foreground">Categories</div>
-          <div className="text-sm text-muted-foreground mt-1">Organize categories and protection rules.</div>
-        </Link>
+        <section className="space-y-3">
+          <h2 className="text-[11px] uppercase tracking-wide text-muted-foreground/70">
+            Intelligence
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Link
+              href="/settings/declutter"
+              className="group rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground">Declutter</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Automation policies, rules, and review queue.
+                  </div>
+                </div>
+                <span className="text-muted-foreground group-hover:text-foreground transition-colors">
+                  →
+                </span>
+              </div>
+            </Link>
 
-        <Link
-          href="/audit"
-          className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
-        >
-          <div className="font-medium text-foreground">Audit</div>
-          <div className="text-sm text-muted-foreground mt-1">See what ChiefOS did and undo safely.</div>
-        </Link>
+            <Link
+              href="/settings/categories"
+              className="group rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground">Categories</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Organize categories and protection rules.
+                  </div>
+                </div>
+                <span className="text-muted-foreground group-hover:text-foreground transition-colors">
+                  →
+                </span>
+              </div>
+            </Link>
 
-        {onboardingV1Enabled() && (
-          <Link
-            href="/settings/personal/setup/manage"
-            className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
-          >
-            <div className="font-medium text-foreground">Setup scan</div>
-            <div className="text-sm text-muted-foreground mt-1">Refresh insights and recommendations.</div>
-          </Link>
-        )}
+            {onboardingV1Enabled() && (
+              <Link
+                href="/settings/personal/setup/manage"
+                className="group rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="font-medium text-foreground">Workspace refresh</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Refresh insights and recommendations.
+                    </div>
+                  </div>
+                  <span className="text-muted-foreground group-hover:text-foreground transition-colors">
+                    →
+                  </span>
+                </div>
+              </Link>
+            )}
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-[11px] uppercase tracking-wide text-muted-foreground/70">
+            Operations
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Link
+              href="/audit"
+              className="group rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground">Audit</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    See what ChiefOS did and undo safely.
+                  </div>
+                </div>
+                <span className="text-muted-foreground group-hover:text-foreground transition-colors">
+                  →
+                </span>
+              </div>
+            </Link>
+          </div>
+        </section>
       </div>
     </div>
   );

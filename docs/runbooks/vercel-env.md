@@ -52,6 +52,21 @@ Recommended defaults:
   - `OPENAI_MODEL` / `ANTHROPIC_MODEL`
   - `LLM_CLASSIFICATION_ENABLED` (`true`/`false`)
 
+## Cron schedule and “morning prep” timing
+
+Vercel Cron schedules in `vercel.json` are **UTC-based**. ChiefOS currently uses a **single** daily cron to run:
+- Gmail sync
+- Calendar sync
+- Auto-archive batch (when enabled)
+
+Because the schedule is global UTC, it cannot perfectly match **each user’s local morning** without introducing more scheduling infrastructure.
+
+### Best-effort approach (current)
+- Store a preferred local “morning prep” time and a timezone in **Settings → Workspace & Sync**.\n+- Use this primarily for:\n+  - guiding which UTC cron hour to choose\n+  - documenting DST behavior\n+
+### DST limitation
+If your timezone observes daylight savings, a single UTC cron hour will typically align with **either** winter **or** summer local time.\n+Options:\n+- Pick a best-fit UTC hour (acceptable for early product / single primary timezone)\n+- Adjust `vercel.json` seasonally when DST changes\n+
+### Where to change the cron
+- `vercel.json` → `crons[0].schedule`\n+- Cron handler: `src/app/api/cron/sync-and-run/route.ts`\n+
 ## Automation safety (recommended defaults)
 For **preview** and early production rollouts:
 - Keep any automated Gmail mutation behind an env flag.
