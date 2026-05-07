@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import { getInboxStats } from "@/services/gmail/labels";
 import { inferAccountTypeFromEmail } from "@/lib/onboarding/infer";
+import { getRuleSuggestionsForUser } from "@/services/declutter/suggestions";
 
 const EXCLUDE_PRIORITY_CATEGORIES = ["Newsletters", "Promotions", "Low-priority"];
 const BOOST_CATEGORIES = ["Work", "Portfolio", "Job Search", "Kids logistics"];
@@ -62,6 +63,17 @@ export interface BriefPayload {
   }>;
   categories: Array<{ id: string; name: string }>;
   llmStatus: { enabled: boolean; provider: string; model: string };
+  suggestedActions: Array<{
+    emailEventId: string;
+    from: string;
+    snippet: string | null;
+    categoryId: string;
+    categoryName: string;
+    confidence: number | null;
+    band: "high" | "mid";
+    recommendedRuleType: "domain" | "sender";
+    recommendedValue: string;
+  }>;
   topPriorities: Array<{
     id: string;
     messageId: string;
@@ -161,6 +173,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     upcomingEvents,
     auditCount,
     categories,
+    suggestedActions,
   ] = await Promise.all([
     prisma.emailEvent.findMany({
       where: {
@@ -193,6 +206,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       where: { userId },
       select: { id: true, name: true },
     }),
+    getRuleSuggestionsForUser({ userId, googleAccountIds: accountIds, limit: 4 }),
   ]);
 
   const perAccountArchives = await prisma.auditLog.groupBy({
@@ -500,6 +514,17 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       provider: llmStatus.provider,
       model: llmStatus.model,
     },
+    suggestedActions: suggestedActions.map((s) => ({
+      emailEventId: s.emailEventId,
+      from: s.from,
+      snippet: s.snippet,
+      categoryId: s.categoryId,
+      categoryName: s.categoryName,
+      confidence: s.confidence,
+      band: s.band,
+      recommendedRuleType: s.recommendedRuleType,
+      recommendedValue: s.recommendedValue,
+    })),
     topPriorities: priorities.map((e) => {
       const acc = accountById.get(e.googleAccountId)!;
       const accountType = accountTypeById.get(e.googleAccountId) ?? inferAccountTypeFromEmail(acc.email);

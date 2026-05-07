@@ -26,8 +26,10 @@ export function OnboardingAccountsClient({
   items: Item[];
   dbWarning: string | null;
   readOnly: boolean;
-  mode?: "onboarding" | "settings";
+  mode?: "onboarding" | "settings" | "setup";
 }) {
+  const flowBase =
+    mode === "setup" ? "/settings/personal/setup" : "/onboarding";
   const [rows, setRows] = useState<Item[]>(items);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(
@@ -177,10 +179,10 @@ export function OnboardingAccountsClient({
       </div>
 
       <div className="flex items-center gap-3">
-        {mode === "onboarding" ? (
+        {mode === "onboarding" || mode === "setup" ? (
           <>
             <Link
-              href="/onboarding/goals"
+              href={`${flowBase}/goals`}
               className="inline-block rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
             >
               Continue

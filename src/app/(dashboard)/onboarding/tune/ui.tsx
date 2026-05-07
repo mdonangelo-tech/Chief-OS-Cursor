@@ -17,11 +17,14 @@ export function OnboardingTuneClient({
   runId,
   status,
   questions,
+  mode = "onboarding",
 }: {
   runId: string;
   status: string;
   questions: unknown[];
+  mode?: "onboarding" | "setup";
 }) {
+  const flowBase = mode === "setup" ? "/settings/personal/setup" : "/onboarding";
   const qs = useMemo(() => questions as AnyQuestion[], [questions]);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
@@ -70,7 +73,7 @@ export function OnboardingTuneClient({
           No questions needed right now.
           <div className="mt-4">
             <Link
-              href={`/onboarding/insights`}
+              href={`${flowBase}/insights`}
               className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
             >
               Continue
@@ -149,7 +152,7 @@ export function OnboardingTuneClient({
             >
               {saving ? "Saving…" : "Save answers"}
             </button>
-            <Link href="/onboarding/insights" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link href={`${flowBase}/insights`} className="text-sm text-muted-foreground hover:text-foreground">
               Continue
             </Link>
           </div>

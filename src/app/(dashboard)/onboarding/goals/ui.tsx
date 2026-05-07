@@ -13,8 +13,9 @@ export function OnboardingGoalsClient({
 }: {
   initialGoals: Goal[];
   initialFreeText: string;
-  mode?: "onboarding" | "settings";
+  mode?: "onboarding" | "settings" | "setup";
 }) {
+  const flowBase = mode === "setup" ? "/settings/personal/setup" : "/onboarding";
   const [goals, setGoals] = useState<Goal[]>(initialGoals);
   const [freeText, setFreeText] = useState<string>(initialFreeText);
   const [saving, setSaving] = useState(false);
@@ -49,10 +50,10 @@ export function OnboardingGoalsClient({
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">
-          {mode === "settings" ? "Personal context" : "Goals"}
+          {mode === "settings" || mode === "setup" ? "Personal context" : "Goals"}
         </h1>
         <p className="text-muted-foreground mt-1">
-          {mode === "settings"
+          {mode === "settings" || mode === "setup"
             ? "What are you optimizing for right now? This helps ChiefOS prioritize your Brief."
             : "What are you optimizing for over the next 30 days?"}
         </p>
@@ -119,8 +120,8 @@ export function OnboardingGoalsClient({
           >
             {saving ? "Saving…" : "Save goals"}
           </button>
-          {mode === "onboarding" && (
-            <Link href="/onboarding/scan" className="text-sm text-muted-foreground hover:text-foreground">
+          {(mode === "onboarding" || mode === "setup") && (
+            <Link href={`${flowBase}/scan`} className="text-sm text-muted-foreground hover:text-foreground">
               Continue
             </Link>
           )}

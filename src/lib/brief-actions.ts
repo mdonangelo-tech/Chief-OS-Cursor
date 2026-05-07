@@ -124,6 +124,7 @@ export async function acceptSuggestion(formData: FormData) {
   if (!session?.user?.id) return;
   const emailEventId = formData.get("emailEventId") as string;
   if (!emailEventId) return;
+  const returnTo = safeReturnTo(formData, "/brief#suggested-actions");
   const event = await prisma.emailEvent.findFirst({
     where: { id: emailEventId },
     include: { googleAccount: true },
@@ -152,7 +153,7 @@ export async function acceptSuggestion(formData: FormData) {
   }
   revalidatePath("/brief");
   revalidatePath("/settings/declutter");
-  redirect("/settings/declutter#suggested-actions");
+  redirect(returnTo);
 }
 
 /** Reject suggestion: don't suggest this sender/domain again, revert classification. */
@@ -162,6 +163,7 @@ export async function rejectSuggestion(formData: FormData) {
   const emailEventId = formData.get("emailEventId") as string;
   const ruleType = formData.get("ruleType") as string; // "sender" | "domain" | "both"
   if (!emailEventId) return;
+  const returnTo = safeReturnTo(formData, "/brief#suggested-actions");
   const event = await prisma.emailEvent.findFirst({
     where: { id: emailEventId },
     include: { googleAccount: true },
@@ -216,7 +218,7 @@ export async function rejectSuggestion(formData: FormData) {
   });
   revalidatePath("/brief");
   revalidatePath("/settings/declutter");
-  redirect("/settings/declutter#suggested-actions");
+  redirect(returnTo);
 }
 
 /** Approve suggested rule: creates sender or domain rule from email event. */

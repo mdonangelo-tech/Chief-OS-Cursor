@@ -20,7 +20,14 @@ type GetRunResp =
   | { ok: true; run: Run }
   | { ok: false; error: string; requestId?: string };
 
-export function OnboardingScanClient({ initialRunId }: { initialRunId: string | null }) {
+export function OnboardingScanClient({
+  initialRunId,
+  mode = "onboarding",
+}: {
+  initialRunId: string | null;
+  mode?: "onboarding" | "setup";
+}) {
+  const flowBase = mode === "setup" ? "/settings/personal/setup" : "/onboarding";
   const [runId, setRunId] = useState<string | null>(initialRunId);
   const [run, setRun] = useState<Run | null>(null);
   const [loading, setLoading] = useState<"start" | "poll" | null>(null);
@@ -58,7 +65,11 @@ export function OnboardingScanClient({ initialRunId }: { initialRunId: string | 
       if (!res.ok || !data.ok || !data.runId) throw new Error(data.error ?? "Failed to start");
       setRunId(data.runId);
       // Keep URL shareable
-      window.history.replaceState(null, "", `/onboarding/scan?runId=${encodeURIComponent(data.runId)}`);
+      window.history.replaceState(
+        null,
+        "",
+        `${flowBase}/scan?runId=${encodeURIComponent(data.runId)}`
+      );
       showToast("success", "Scan started");
     } catch (e) {
       showToast("error", (e as Error).message);
@@ -166,14 +177,14 @@ export function OnboardingScanClient({ initialRunId }: { initialRunId: string | 
           )}
 
           <Link
-            href="/onboarding/goals"
+            href={`${flowBase}/goals`}
             className="rounded-xl border border-border/10 bg-surface/50 px-4 py-2 text-sm text-foreground hover:bg-surface2/60"
           >
             Back
           </Link>
 
           <Link
-            href={runId ? `/onboarding/tune?runId=${encodeURIComponent(runId)}` : "/onboarding/insights"}
+            href={runId ? `${flowBase}/tune?runId=${encodeURIComponent(runId)}` : `${flowBase}/insights`}
             className="rounded-xl bg-surface2/70 px-4 py-2 text-sm text-foreground hover:opacity-90"
           >
             Continue

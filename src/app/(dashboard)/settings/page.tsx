@@ -34,10 +34,10 @@ export default async function SettingsHomePage() {
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Link
-              href="/onboarding"
+              href="/settings/personal/setup"
               className="rounded-xl bg-accent px-4 py-2 text-accent-foreground font-medium hover:opacity-90"
             >
-              Start onboarding
+              Start setup
             </Link>
             {accountsCount === 0 && (
               <Link href="/settings/accounts" className="text-sm text-accent hover:underline">
@@ -91,11 +91,11 @@ export default async function SettingsHomePage() {
 
         {onboardingV1Enabled() && (
           <Link
-            href="/settings/onboarding"
+            href="/settings/personal/setup/manage"
             className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
           >
-            <div className="font-medium text-foreground">Onboarding</div>
-            <div className="text-sm text-muted-foreground mt-1">Re-run scan and manage onboarding state.</div>
+            <div className="font-medium text-foreground">Setup scan</div>
+            <div className="text-sm text-muted-foreground mt-1">Refresh insights and recommendations.</div>
           </Link>
         )}
       </div>

@@ -28,6 +28,11 @@ function parsePositiveInt(v: unknown, fallback: number): number {
   return n;
 }
 
+function shortRunId(id: string, n = 8): string {
+  if (!id) return "—";
+  return id.length <= n ? id : `${id.slice(0, n)}…`;
+}
+
 function buildAuditUrl(params: Record<string, string | undefined>) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -189,9 +194,9 @@ export default async function AuditPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Gmail action history</h1>
+        <h1 className="text-2xl font-semibold">Audit</h1>
         <p className="text-muted-foreground mt-1">
-          Inspect past archive actions and undo when needed.
+          See what ChiefOS did — and undo safely when needed.
         </p>
         <p className="text-muted-foreground/80 text-xs mt-1">
           Note: Gmail labels list messages by <strong>received date</strong>. This page lists actions by <strong>archived/spammed time</strong>.
@@ -310,7 +315,7 @@ export default async function AuditPage({
                   </div>
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground/80">
-                  Run {runId}
+                  <span title={runId}>Run {shortRunId(runId)}</span>
                   {runAccEmails.length > 0 ? ` · ${runAccEmails.join(" · ")}` : ""}
                 </div>
               </li>
@@ -324,6 +329,24 @@ export default async function AuditPage({
         <p className="text-muted-foreground">No Gmail actions yet.</p>
       ) : (
         <>
+          {runIdFilter && (
+            <div className="rounded-2xl border border-border/10 bg-surface/50 px-4 py-3 shadow-soft">
+              <div className="text-sm text-foreground">
+                Viewing a run:{" "}
+                <span className="font-mono text-xs text-muted-foreground" title={runIdFilter}>
+                  {shortRunId(runIdFilter, 10)}
+                </span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                <Link
+                  href={buildAuditUrl({ account: selectedAccountId ?? "all", sort, page: "1", pageSize: pageSizeRaw })}
+                  className="text-accent hover:underline"
+                >
+                  Back to all runs and entries
+                </Link>
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-lg font-medium text-foreground">All entries</h2>
@@ -332,7 +355,7 @@ export default async function AuditPage({
                 {runIdFilter ? (
                   <>
                     {" · "}
-                    <span className="font-mono text-xs">run {runIdFilter}</span>{" "}
+                    <span className="font-mono text-xs" title={runIdFilter}>run {shortRunId(runIdFilter, 10)}</span>{" "}
                     <Link
                       href={buildAuditUrl({ account: selectedAccountId ?? "all", sort, page: "1", pageSize: pageSizeRaw })}
                       className="text-accent hover:underline"

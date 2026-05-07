@@ -68,7 +68,7 @@ export default async function DashboardLayout({
             <DashboardNavLinks />
             {onboardingV1Enabled() && !hasCompletedOnboarding && (
               <Link
-                href="/onboarding"
+                href="/settings/personal/setup"
                 className="text-sm font-medium text-accent hover:text-accent/80 transition-colors shrink-0"
               >
                 Finish setup

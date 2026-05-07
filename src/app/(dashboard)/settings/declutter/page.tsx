@@ -3,29 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { addCategory, addCategoryFromGmail, upsertCategoryDeclutterRule, updateDeclutterAutoArchive } from "@/lib/setup-actions";
 import { ensureDeclutterRulesForCategories } from "@/lib/setup-defaults";
 import { asDbErrorInfo } from "@/lib/db-errors";
-import { GMAIL_CHIEFOS_ARCHIVED_URL, listUserLabels, type GmailLabelInfo } from "@/services/gmail/labels";
-import { AutoArchiveRunner } from "./AutoArchiveRunner";
-import { ArchiveByDaysRunner } from "./ArchiveByDaysRunner";
+import { listUserLabels, type GmailLabelInfo } from "@/services/gmail/labels";
 import { AutoArchiveToggle } from "./AutoArchiveToggle";
 import { CategoryRuleRow } from "./CategoryRuleRow";
 import { SuggestionRow } from "../../rules/SuggestionRow";
 import { RuleRow } from "../../rules/RuleRow";
 import Link from "next/link";
-
-function extractEmail(fromHeader: string): string | null {
-  const match = fromHeader.match(/<([^>]+)>/);
-  if (match) return match[1].toLowerCase().trim();
-  const trimmed = fromHeader.trim();
-  if (trimmed.includes("@")) return trimmed.toLowerCase();
-  return null;
-}
-
-function extractDomain(fromHeader: string): string | null {
-  const email = extractEmail(fromHeader);
-  if (!email) return null;
-  const parts = email.split("@");
-  return parts.length === 2 ? parts[1].toLowerCase() : null;
-}
+import { buildRuleSuggestions } from "@/services/declutter/suggestions";
 
 function rulesHref(base: {
   importParam: string | null;
@@ -254,42 +238,13 @@ export default async function DeclutterPage({
       : Math.max(1, Math.ceil(ruleTotal / rulesTake));
   const rulesPageClamped = Math.min(rulesPage, rulesTotalPages);
 
-  type Suggestion = {
-    id: string;
-    from: string;
-    email: string | null;
-    domain: string | null;
-    categoryName: string;
-    confidence: number | null;
-    band: "high" | "mid";
-    snippet: string | null;
-  };
-  const suggestions: Suggestion[] = [];
-  const seenIds = new Set<string>();
-  for (const e of suggestedEvents) {
-    const email = extractEmail(e.from_);
-    const domain = extractDomain(e.from_) ?? e.senderDomain;
-    const cat = e.category;
-    if (!cat) continue;
-    const needsSender = email && !knownEmails.has(email);
-    const needsDomain = domain && !knownDomains.has(domain);
-    if (!needsSender && !needsDomain) continue;
-    if (rejectedKeys.has(`person:${email}`) || rejectedKeys.has(`domain:${domain}`)) continue;
-    if (seenIds.has(e.id)) continue;
-    seenIds.add(e.id);
-    const conf = e.confidence ?? (e.explainJson as { confidence?: number } | null)?.confidence ?? null;
-    const band: "high" | "mid" = conf != null && conf >= 0.85 ? "high" : "mid";
-    suggestions.push({
-      id: e.id,
-      from: e.from_,
-      email,
-      domain,
-      categoryName: cat.name,
-      confidence: conf,
-      band,
-      snippet: e.snippet,
-    });
-  }
+  const suggestions = buildRuleSuggestions({
+    events: suggestedEvents,
+    knownEmails,
+    knownDomains,
+    rejectedKeys,
+    limit: 50,
+  });
 
   return (
     <div className="space-y-8">
@@ -311,17 +266,11 @@ export default async function DeclutterPage({
           </div>
         )}
         <p className="text-muted-foreground mt-1">
-          Per-category rules and auto-archive. Archived emails get the{" "}
-          <strong>ChiefOS/Archived</strong> label.{" "}
-          <a
-            href={GMAIL_CHIEFOS_ARCHIVED_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent hover:underline"
-          >
-            View in Gmail
-          </a>{" "}
-          · Undo in{" "}
+          Set how ChiefOS should handle low-priority email. Preview and one-off operations live under{" "}
+          <Link href="/settings/declutter/operations" className="text-accent hover:underline">
+            Operations
+          </Link>
+          . Undo safely in{" "}
           <Link href="/audit" className="text-accent hover:underline">
             Audit
           </Link>
@@ -332,7 +281,61 @@ export default async function DeclutterPage({
             Preview decisions →
           </Link>
         </p>
+        <div className="mt-3 flex items-center gap-2">
+          <Link
+            href="/settings/declutter"
+            aria-current="page"
+            className="rounded-xl px-3 py-1.5 text-sm font-medium bg-surface2/70 text-foreground"
+          >
+            Policy
+          </Link>
+          <Link
+            href="/settings/declutter/operations"
+            className="rounded-xl px-3 py-1.5 text-sm font-medium bg-surface/50 text-muted-foreground hover:text-foreground hover:bg-surface2/60"
+          >
+            Operations
+          </Link>
+        </div>
       </div>
+
+      <section id="suggested-actions" className="space-y-4 scroll-mt-6">
+        <h2 className="text-lg font-medium">Suggested actions</h2>
+        <p className="text-muted-foreground text-sm">
+          Lightweight rule suggestions based on what you’ve been receiving.
+        </p>
+        {suggestions.length > 0 ? (
+          <>
+            <div className="flex flex-wrap items-center gap-3 mb-3">
+              <h3 className="text-base font-medium text-foreground/90">Suggested rules</h3>
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                {suggestions.length} to review
+              </span>
+            </div>
+            <ul className="space-y-3">
+              {suggestions.map((s) => (
+                <SuggestionRow
+                  key={s.emailEventId}
+                  id={s.emailEventId}
+                  from={s.from}
+                  snippet={s.snippet}
+                  categoryName={s.categoryName}
+                  categoryId={s.categoryId}
+                  confidence={s.confidence}
+                  band={s.band}
+                  hasSender={s.needsSender}
+                  hasDomain={s.needsDomain}
+                  categories={categories}
+                />
+              ))}
+            </ul>
+          </>
+        ) : (
+          <div className="rounded-2xl border border-border/10 bg-surface/50 px-6 py-8 text-center shadow-soft">
+            <p className="text-emerald-400/90 font-medium">All clear!</p>
+            <p className="text-muted-foreground text-sm mt-1">No rules to review. Your queue is empty.</p>
+          </div>
+        )}
+      </section>
 
       <section className="space-y-4">
         <h2 className="text-lg font-medium">Auto-archive</h2>
@@ -370,13 +373,10 @@ export default async function DeclutterPage({
             {declutterPref?.autoArchiveEnabled ? "On" : "Off"}
           </span>
         </div>
-        <div className="mt-4 pt-4 border-t border-border/10">
-          <h3 className="text-sm font-medium text-foreground/90 mb-2">Upcoming auto-archive</h3>
-          <AutoArchiveRunner />
-        </div>
-        <div className="mt-4 pt-4 border-t border-border/10">
-          <h3 className="text-sm font-medium text-foreground/90 mb-2">Archive by age (all inbox)</h3>
-          <ArchiveByDaysRunner />
+        <div className="mt-3 text-sm text-muted-foreground">
+          <Link href="/settings/declutter/operations" className="text-accent hover:underline">
+            View upcoming operations →
+          </Link>
         </div>
       </section>
 
@@ -511,48 +511,6 @@ export default async function DeclutterPage({
               );
             })}
           </ul>
-        )}
-      </section>
-
-      <section id="suggested-actions" className="space-y-4 scroll-mt-6">
-        <h2 className="text-lg font-medium">Suggested actions</h2>
-        <p className="text-muted-foreground text-sm">
-          ChiefOS suggests rules based on what you’ve been receiving. Approve once and it will apply automatically next time.
-        </p>
-        {suggestions.length > 0 ? (
-          <>
-            <div className="flex flex-wrap items-center gap-3 mb-3">
-              <h3 className="text-base font-medium text-foreground/90">Suggested rules</h3>
-              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                {suggestions.length} to review
-              </span>
-            </div>
-            <p className="text-muted-foreground text-sm mb-4">
-              <strong className="text-emerald-500/90">Accept</strong> = looks good, clear it. Choose a category and click <strong className="text-accent">Create person rule</strong> or <strong className="text-accent">Create domain rule</strong> to save.
-            </p>
-            <ul className="space-y-3">
-              {suggestions.map((s) => (
-                <SuggestionRow
-                  key={s.id}
-                  id={s.id}
-                  from={s.from}
-                  snippet={s.snippet}
-                  categoryName={s.categoryName}
-                  categoryId={suggestedEvents.find((e) => e.id === s.id)!.classificationCategoryId!}
-                  confidence={s.confidence}
-                  band={s.band}
-                  hasSender={!!s.email && !knownEmails.has(s.email)}
-                  hasDomain={!!s.domain && !knownDomains.has(s.domain)}
-                  categories={categories}
-                />
-              ))}
-            </ul>
-          </>
-        ) : (
-          <div className="rounded-2xl border border-border/10 bg-surface/50 px-6 py-8 text-center shadow-soft">
-            <p className="text-emerald-400/90 font-medium">All clear!</p>
-            <p className="text-muted-foreground text-sm mt-1">No rules to review. Your queue is empty.</p>
-          </div>
         )}
       </section>
 
