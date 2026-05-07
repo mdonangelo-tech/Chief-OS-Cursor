@@ -1,0 +1,57 @@
+{
+  "type": "brief_priority",
+  "name": "Brief priorities suppress low-signal categories unless action-needed",
+  "maxPriorities": 5,
+  "excludePriorityCategories": ["Newsletters", "Promotions", "Low-priority"],
+  "boostCategories": ["Work", "Portfolio", "Job Search", "Kids logistics"],
+  "emails": [
+    {
+      "id": "n1",
+      "unread": true,
+      "importanceScore": 0.85,
+      "needsAction": false,
+      "actionType": "read",
+      "confidence": 0.9,
+      "categoryName": "Newsletters"
+    },
+    {
+      "id": "p1",
+      "unread": true,
+      "importanceScore": 0.75,
+      "needsAction": true,
+      "actionType": "reply",
+      "confidence": 0.8,
+      "categoryName": "Promotions"
+    },
+    {
+      "id": "w1",
+      "unread": true,
+      "importanceScore": 0.62,
+      "needsAction": false,
+      "actionType": null,
+      "confidence": 0.7,
+      "categoryName": "Work"
+    },
+    {
+      "id": "w2",
+      "unread": true,
+      "importanceScore": 0.81,
+      "needsAction": false,
+      "actionType": null,
+      "confidence": 0.75,
+      "categoryName": "Work"
+    },
+    {
+      "id": "l1",
+      "unread": true,
+      "importanceScore": 0.95,
+      "needsAction": false,
+      "actionType": null,
+      "confidence": 0.7,
+      "categoryName": "Low-priority"
+    }
+  ],
+  "expectedTopIds": ["w2", "l1", "p1", "w1"],
+  "expectedNotInTopIds": ["n1"]
+}
+

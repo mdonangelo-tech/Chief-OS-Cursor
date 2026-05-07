@@ -4,6 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
+import { logger } from "@/lib/logger";
 
 export interface GoogleAccountWithTokens {
   id: string;
@@ -37,29 +38,12 @@ export async function getGoogleAccountWithTokens(
   try {
     refreshToken = decrypt(acc.refreshTokenEncrypted);
   } catch (e) {
-    try {
-      const { appendFileSync } = await import("node:fs");
-      appendFileSync(
-        "/Users/mdonangelo/Chief-OS-Cursor/.cursor/debug.log",
-        JSON.stringify({
-          runId: "auto-archive",
-          hypothesisId: "H2",
-          location: "src/lib/google-accounts.ts:getGoogleAccountWithTokens:fallbackFileLog",
-          message: "Failed to decrypt stored refresh token (file fallback)",
-          data: {
-            accountId,
-            encryptedLen,
-            encryptedParts,
-            err: (e as Error)?.message ?? String(e),
-          },
-          timestamp: Date.now(),
-        }) + "\n"
-      );
-    } catch {
-      // ignore
-    }
-    // #region agent log
-    // #endregion
+    logger.error("google_account_decrypt_refresh_token_failed", {
+      accountId,
+      encryptedLen,
+      encryptedParts,
+      err: (e as Error)?.message ?? String(e),
+    });
     throw e;
   }
 

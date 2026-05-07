@@ -7,6 +7,13 @@ import { prisma } from "@/lib/prisma";
 import { getInboxStats } from "@/services/gmail/labels";
 import { inferAccountTypeFromEmail } from "@/lib/onboarding/infer";
 import { getRuleSuggestionsForUser } from "@/services/declutter/suggestions";
+import {
+  buildPriorityExplanation as buildPriorityExplanationPure,
+  computePriorityScore as computePriorityScorePure,
+  isDigestCategoryName,
+  isLowSignalPriorityCategoryName,
+  type PriorityEmailInput,
+} from "@/services/brief/intelligence";
 
 const EXCLUDE_PRIORITY_CATEGORIES = ["Newsletters", "Promotions", "Low-priority"];
 const BOOST_CATEGORIES = ["Work", "Portfolio", "Job Search", "Kids logistics"];
@@ -17,9 +24,11 @@ const WAITING_REPLY_DAYS = 2;
 const HOURS_48 = 48 * 60 * 60 * 1000;
 
 function isDigestCategory(name: string | null): boolean {
-  if (!name) return false;
-  const n = name.toLowerCase();
-  return ["newsletters", "promotions", "low-priority"].includes(n);
+  return isDigestCategoryName(name);
+}
+
+function isLowSignalPriorityCategory(name: string | null): boolean {
+  return isLowSignalPriorityCategoryName(name, EXCLUDE_PRIORITY_CATEGORIES);
 }
 
 function extractEmail(from: string): string | null {
@@ -89,6 +98,8 @@ export interface BriefPayload {
     categoryName: string | null;
     confidence: number | null;
     actionType: string | null;
+    prioritySummary: string | null;
+    prioritySignals: string[];
     explainJson: Record<string, unknown> | null;
   }>;
   openLoops: Array<{
@@ -223,25 +234,51 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     perAccountArchives.map((r) => [r.googleAccountId, r._count._all] as const)
   );
 
-  const catNames = new Set(categories.map((c) => c.name));
   const digestEmails = unreadEmails.filter((e) => isDigestCategory(e.category?.name ?? null));
   const nonDigest = unreadEmails.filter((e) => !isDigestCategory(e.category?.name ?? null));
 
+  function toPriorityInput(e: (typeof nonDigest)[number]): PriorityEmailInput {
+    return {
+      id: e.id,
+      unread: e.unread,
+      importanceScore: e.importanceScore ?? null,
+      needsAction: e.needsAction ?? null,
+      actionType: e.actionType ?? null,
+      confidence: e.confidence ?? null,
+      categoryName: e.category?.name ?? null,
+      briefDismissedAt: e.briefDismissedAt ?? null,
+      briefNotImportantAt: e.briefNotImportantAt ?? null,
+      explainJson: (e.explainJson as Record<string, unknown>) ?? null,
+    };
+  }
+
   function priorityScore(e: (typeof nonDigest)[number]): number {
-    if (e.briefDismissedAt || e.briefNotImportantAt) return 0;
-    const cat = e.category?.name ?? "";
-    const imp = e.importanceScore ?? 0;
-    const needs = e.needsAction ?? false;
-    const unread = e.unread;
-    const boost = BOOST_CATEGORIES.some((b) => cat.toLowerCase().includes(b.toLowerCase())) ? 0.15 : 0;
-    const base = needs || imp >= 0.8 ? 1 : imp >= 0.6 ? 0.8 : unread ? 0.4 : 0;
-    return base + boost;
+    return computePriorityScorePure(toPriorityInput(e), {
+      excludePriorityCategories: EXCLUDE_PRIORITY_CATEGORIES,
+      boostCategories: BOOST_CATEGORIES,
+    });
+  }
+
+  function buildPriorityExplanation(e: (typeof nonDigest)[number]): {
+    summary: string | null;
+    signals: string[];
+  } {
+    return buildPriorityExplanationPure(toPriorityInput(e), {
+      excludePriorityCategories: EXCLUDE_PRIORITY_CATEGORIES,
+      boostCategories: BOOST_CATEGORIES,
+    });
   }
 
   const priorityCandidates = nonDigest.filter((e) => {
     const imp = e.importanceScore ?? 0;
     const needs = e.needsAction ?? false;
     const unread = e.unread;
+    const catName = e.category?.name ?? null;
+
+    // Explicitly suppress obvious low-signal categories unless they truly need action.
+    // Keep this conservative: allow through if needsAction or very-high importance.
+    if (isLowSignalPriorityCategory(catName) && !needs && imp < 0.9) return false;
+
     if (!unread && !needs && imp < 0.8) return false;
     return priorityScore(e) >= 0.6;
   });
@@ -307,9 +344,11 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       });
     }
   }
-  const openLoops = openLoopCandidates.sort(
+  const openLoops = openLoopCandidates
+    .sort(
     (a, b) => a.lastDate.getTime() - b.lastDate.getTime()
-  );
+    )
+    .slice(0, MAX_OPEN_LOOPS);
 
   const eventsByDay = new Map<string, typeof upcomingEvents>();
   for (const e of upcomingEvents) {
@@ -358,16 +397,15 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
   }, 0);
 
   let calendarNarrative: string | undefined;
-  if (meetingEvents.length === 0 && familyEvents.length === 0) {
-    calendarNarrative = "No urgent calendar conflicts detected.";
-  } else if (meetingHours <= 2 && familyEvents.length > 0) {
-    calendarNarrative = `Your true meeting load is light, but you have ${familyEvents.length} family logistics item(s).`;
-  } else if (meetingHours <= 2) {
-    calendarNarrative = "Your true meeting load is light.";
-  } else if (meetingHours >= 8) {
+  // Keep calendar narratives sparse and meaningful; prefer silence over generic summaries.
+  if (meetingHours >= 8) {
     calendarNarrative = `Heavy meeting load this week (~${Math.round(meetingHours)}h).`;
-  } else if (backToBackChains.length > 0) {
+  } else if (overloaded.length > 0) {
+    calendarNarrative = "A few days look packed.";
+  } else if (backToBackChains.length > 0 && meetingEvents.length >= 4) {
     calendarNarrative = "High context-switching risk on a few days this week.";
+  } else if (familyEvents.length >= 2 && meetingHours >= 2) {
+    calendarNarrative = "Work + family logistics overlap this week.";
   }
 
   const digestByCategory: Record<string, { newCount: number; olderThan48hCount: number }> = {};
@@ -385,7 +423,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     if (!senderGroups.has(key)) senderGroups.set(key, []);
     senderGroups.get(key)!.push(e);
   }
-  const digestGroups = Array.from(senderGroups.entries()).map(([sender, emails]) => {
+  const digestGroups = Array.from(senderGroups.entries()).map(([_sender, emails]) => {
     const first = emails[0];
     return {
       sender: first!.from_,
@@ -476,13 +514,6 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     )
     .map((r) => r.value);
 
-  const fmt = (d: Date) => {
-    const m = Math.round((d.getTime() - Date.now()) / 60000);
-    if (m < 60) return `in ${m}m`;
-    if (m < 1440) return `in ${Math.round(m / 60)}h`;
-    return d.toLocaleDateString();
-  };
-
   return {
     summary: {
       prioritiesCount: priorities.length,
@@ -529,6 +560,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       const acc = accountById.get(e.googleAccountId)!;
       const accountType = accountTypeById.get(e.googleAccountId) ?? inferAccountTypeFromEmail(acc.email);
       const accountLabel = acc.userDefinedLabel || (accountType === "work" ? "Work" : "Personal");
+      const px = buildPriorityExplanation(e);
       return {
         id: e.id,
         messageId: e.messageId,
@@ -544,6 +576,8 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
         categoryName: e.category?.name ?? null,
         confidence: e.confidence ?? null,
         actionType: e.actionType ?? null,
+        prioritySummary: px.summary,
+        prioritySignals: px.signals,
         explainJson: (e.explainJson as Record<string, unknown>) ?? null,
       };
     }),

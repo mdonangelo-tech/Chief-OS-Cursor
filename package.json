@@ -8,6 +8,7 @@
     "start": "next start -p ${PORT:-3000}",
     "test": "tsx --test \"src/**/*.test.ts\"",
     "lint": "next lint",
+    "eval:intelligence": "tsx scripts/eval-intelligence.ts",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

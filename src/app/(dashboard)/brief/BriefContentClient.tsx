@@ -35,18 +35,19 @@ export function BriefContentClient({ payload }: { payload: BriefPayload }) {
   const archivedLast24h = inboxByAccount.reduce((s, a) => s + (a.archivedLast24h ?? 0), 0);
 
   return (
-    <div className="space-y-8">
-      <div className="flex gap-2 mb-2">
+    <div className="space-y-10">
+      <div className="flex flex-wrap items-center gap-2 mb-1">
+        <div className="text-xs text-muted-foreground mr-1">View:</div>
         {(["all", "personal", "work"] as const).map((f) => (
           <button
             key={f}
             type="button"
             onClick={() => setAccountFilter(f)}
             aria-pressed={accountFilter === f}
-            className={`rounded-xl px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
+            className={`rounded-full px-3 py-1 text-sm font-medium capitalize transition-colors ${
               accountFilter === f
-                ? "bg-accent text-accent-foreground"
-                : "bg-muted text-muted-foreground hover:text-foreground"
+                ? "bg-accent/20 text-foreground"
+                : "bg-muted/60 text-muted-foreground hover:text-foreground"
             }`}
           >
             {f}
@@ -65,7 +66,10 @@ export function BriefContentClient({ payload }: { payload: BriefPayload }) {
       />
 
       <section id="priorities" className="scroll-mt-6">
-        <h2 className="text-lg font-medium text-foreground mb-3">Top priorities</h2>
+        <h2 className="text-lg font-medium text-foreground mb-1">What matters right now</h2>
+        <p className="text-sm text-muted-foreground mb-3">
+          Fewer, higher-signal threads — with a clear reason and an easy way to correct ChiefOS.
+        </p>
         {priorities.length > 0 ? (
           <ul className="space-y-4">
             {priorities.map((p) => (
@@ -83,6 +87,8 @@ export function BriefContentClient({ payload }: { payload: BriefPayload }) {
                   categoryName={p.categoryName}
                   confidence={p.confidence}
                   actionType={p.actionType}
+                  prioritySummary={p.prioritySummary}
+                  prioritySignals={p.prioritySignals}
                   explainJson={p.explainJson}
                   categories={payload.categories}
                 />
@@ -90,7 +96,9 @@ export function BriefContentClient({ payload }: { payload: BriefPayload }) {
             ))}
           </ul>
         ) : (
-          <p className="text-muted-foreground text-sm">No priorities for this filter.</p>
+          <p className="text-muted-foreground text-sm">
+            Nothing urgent for this filter. If something belongs here, re-categorize it once and Brief will improve.
+          </p>
         )}
       </section>
 

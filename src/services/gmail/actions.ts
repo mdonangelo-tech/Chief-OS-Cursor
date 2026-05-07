@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/prisma";
 import { getGoogleAccountWithTokens } from "@/lib/google-accounts";
 import { refreshAccessToken } from "@/lib/google-oauth";
+import { logger } from "@/lib/logger";
 import { getOrCreateChiefOSArchivedLabel } from "@/services/gmail/labels";
 
 async function getValidAccessToken(accountId: string, userId: string): Promise<string> {
@@ -24,24 +25,10 @@ async function getValidAccessToken(accountId: string, userId: string): Promise<s
     try {
       tokens = await refreshAccessToken(account.refreshToken);
     } catch (e) {
-      try {
-        const { appendFileSync } = await import("node:fs");
-        appendFileSync(
-          "/Users/mdonangelo/Chief-OS-Cursor/.cursor/debug.log",
-          JSON.stringify({
-            runId: "auto-archive",
-            hypothesisId: "H1",
-            location: "src/services/gmail/actions.ts:getValidAccessToken:fallbackFileLog",
-            message: "refreshAccessToken threw error (file fallback)",
-            data: { accountId, err: (e as Error)?.message ?? String(e) },
-            timestamp: Date.now(),
-          }) + "\n"
-        );
-      } catch {
-        // ignore
-      }
-      // #region agent log
-      // #endregion
+      logger.warn("gmail_token_refresh_failed", {
+        accountId,
+        err: (e as Error)?.message ?? String(e),
+      });
       throw e;
     }
     await prisma.googleAccount.update({

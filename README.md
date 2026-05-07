@@ -2,6 +2,13 @@
 
 Your calm, trustworthy daily brief—unifying Gmail and Google Calendar across personal and work accounts.
 
+## Docs (start here)
+- Architecture map: `docs/architecture.md`
+- Vercel env/secrets: `docs/runbooks/vercel-env.md`
+- Rollback & safety: `docs/runbooks/rollback.md`
+- Gmail OAuth: `docs/runbooks/gmail-oauth.md`
+- Contributing: `CONTRIBUTING.md`
+
 ## Quick Start
 
 ### 1. Environment
@@ -15,6 +22,7 @@ cp .env.example .env
 - `DATABASE_URL` — Postgres connection string
 - `AUTH_SECRET` — Run `npx auth secret` to generate
 - `ENCRYPTION_KEY` — Run `openssl rand -hex 32` (used to encrypt Google refresh tokens)
+- `CRON_SECRET` — Required for the cron endpoint in deployed environments (see docs)
 
 **Optional (email magic links):**
 - `EMAIL_PROVIDER=console` (default) — Logs links to console; use `/dev/magic-links` in dev
@@ -63,104 +71,9 @@ Visit http://localhost:3000
 
 ## Production deployment (Vercel)
 
-### Domains (canonical + redirects)
-
-- **Canonical frontend**: `chief-os.ai`
-- **API**: `api.chief-os.ai` (host-based rewrite to `/api/*` via `vercel.json`)
-- `www.chief-os.ai` → **301** to `chief-os.ai` (preserves path + query)
-- `chief-os.co` and `www.chief-os.co` → **301** to `https://chief-os.ai` (preserves path + query)
-
-### Vercel setup (single project)
-
-- Create one Vercel project for this repo.
-- Add domains to the same project:
-  - `chief-os.ai`
-  - `www.chief-os.ai`
-  - `api.chief-os.ai`
-  - `chief-os.co`
-  - `www.chief-os.co`
-- `vercel.json` handles:
-  - host-based rewrite for `api.chief-os.ai` → `/api/:path*`
-  - edge-level redirects for `www` + `.co` domains
-
-### Required env vars (Vercel)
-
-Required for **production**:
-- `AUTH_SECRET`
-- `AUTH_URL` (set to `https://chief-os.ai`)
-- `DATABASE_URL`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `ENCRYPTION_KEY` (64 hex chars; `openssl rand -hex 32`)
-- `NEXT_PUBLIC_API_BASE_URL` (set to `https://api.chief-os.ai`)
-
-Private access gate (optional):
-- `PRIVATE_MODE` (`true` / `false`)
-- If `PRIVATE_MODE=true`:
-  - `BASIC_AUTH_USER`
-  - `BASIC_AUTH_PASSWORD`
-
-### Health check
-
-- API subdomain (recommended):
-
-```bash
-curl -sS https://api.chief-os.ai/health
-```
-
-- Same-origin:
-
-```bash
-curl -sS https://chief-os.ai/api/health
-```
-
-### CORS
-
-API CORS allowlist (for browser requests with `Origin`):
-- `https://chief-os.ai`
-- `https://www.chief-os.ai`
-
-### Rate limiting + logging
-
-- `/api/*` endpoints that use the API guard apply a **best-effort** in-memory rate limit (default **60 req/min/IP**).
-- Note: on serverless/edge platforms this is **not** a perfect global limit; it’s intended as a simple safety net.
-
-## GoDaddy DNS records to add
-
-Add these records for each domain in GoDaddy (replace `YOUR_VERCEL_PROJECT` only if Vercel provides a specific target; the standard target is `cname.vercel-dns.com`).
-
-### For `chief-os.ai`
-
-| Host | Type | Value |
-|---|---|---|
-| `@` | `A` | `76.76.21.21` |
-| `www` | `CNAME` | `cname.vercel-dns.com` |
-| `api` | `CNAME` | `cname.vercel-dns.com` |
-
-### For `chief-os.co`
-
-| Host | Type | Value |
-|---|---|---|
-| `@` | `A` | `76.76.21.21` |
-| `www` | `CNAME` | `cname.vercel-dns.com` |
-
-## Private mode (Basic Auth)
-
-Set `PRIVATE_MODE=true` plus `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD` in Vercel. When enabled, an edge middleware requires Basic Auth for **all pages and `/api/*`**.
-
-## Rollout checklist
-
-- Set Vercel env vars (Production)
-- Add GoDaddy DNS records for `chief-os.ai` + `chief-os.co`
-- Add all domains to the Vercel project
-- Verify redirects:
-  - `chief-os.co/some/path?x=1` → `chief-os.ai/some/path?x=1`
-  - `www.chief-os.ai` → `chief-os.ai`
-- Verify API rewrite:
-  - `https://api.chief-os.ai/health` returns `{ ok: true, ... }`
-- If `PRIVATE_MODE=true`, verify Basic Auth prompt appears for both:
-  - `https://chief-os.ai/brief`
-  - `https://api.chief-os.ai/health`
+Operational deployment details live in:
+- `docs/runbooks/vercel-env.md`
+- `docs/runbooks/rollback.md`
 
 ## Dogfood allowlist + waitlist
 

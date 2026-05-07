@@ -1,4 +1,5 @@
 import { saveAsRule, acceptSuggestion } from "@/lib/brief-actions";
+import Link from "next/link";
 
 type SuggestedAction = {
   emailEventId: string;
@@ -17,17 +18,18 @@ function labelForRuleType(t: "domain" | "sender"): string {
 }
 
 export function SuggestedActionsSection({ actions }: { actions: SuggestedAction[] }) {
-  if (!actions || actions.length === 0) return null;
+  const high = (actions ?? []).filter((a) => a.band === "high");
+  if (high.length === 0) return null;
 
   return (
     <section id="suggested-actions" className="scroll-mt-6">
       <div className="flex items-baseline justify-between gap-4 mb-3">
         <h2 className="text-lg font-medium text-foreground">Suggested actions</h2>
-        <span className="text-xs text-muted-foreground">2–3 taps to improve your Brief</span>
+        <span className="text-xs text-muted-foreground">Quick wins to improve future Briefs</span>
       </div>
 
       <ul className="space-y-3">
-        {actions.slice(0, 4).map((a) => (
+        {high.slice(0, 3).map((a) => (
           <li
             key={a.emailEventId}
             className="rounded-2xl border border-border/10 bg-surface/60 p-4 shadow-soft"
@@ -45,9 +47,7 @@ export function SuggestedActionsSection({ actions }: { actions: SuggestedAction[
                   {a.confidence != null && (
                     <span className="tabular-nums">{Math.round(a.confidence * 100)}%</span>
                   )}
-                  <span className="rounded bg-muted px-1.5 py-0.5">
-                    {a.band === "high" ? "High confidence" : "Medium confidence"}
-                  </span>
+                  <span className="rounded bg-muted px-1.5 py-0.5">High confidence</span>
                 </div>
                 {a.snippet && (
                   <div className="text-sm text-muted-foreground mt-2 line-clamp-2">
@@ -91,6 +91,15 @@ export function SuggestedActionsSection({ actions }: { actions: SuggestedAction[
           </li>
         ))}
       </ul>
+
+      <div className="mt-3">
+        <Link
+          href="/settings/declutter"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          Manage all suggestions in Settings → Declutter
+        </Link>
+      </div>
     </section>
   );
 }

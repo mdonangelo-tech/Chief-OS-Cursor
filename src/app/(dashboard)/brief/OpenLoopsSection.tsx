@@ -22,7 +22,10 @@ export function OpenLoopsSection({ loops }: { loops: OpenLoop[] }) {
 
   return (
     <section id="open-loops" className="scroll-mt-6">
-      <h2 className="text-lg font-medium text-foreground mb-3">Open loops</h2>
+      <h2 className="text-lg font-medium text-foreground mb-1">Open loops</h2>
+      <p className="text-sm text-muted-foreground mb-3">
+        Threads that look stalled — either you owe a reply, or you’re waiting on someone else.
+      </p>
       <ul className="space-y-2">
         {loops.map((o) => (
           <li

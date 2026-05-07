@@ -7,6 +7,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   analyzeCalendarEventWithLlm,
+  CALENDAR_ANALYZE_PROMPT_VERSION,
+  getLlmStatus,
   isLlmClassificationEnabled,
 } from "@/services/llm";
 
@@ -15,6 +17,7 @@ export async function enrichUpcomingCalendarEvents(
 ): Promise<{ enriched: number; total: number }> {
   if (!isLlmClassificationEnabled()) return { enriched: 0, total: 0 };
 
+  const llmStatus = getLlmStatus();
   const accountIds = (
     await prisma.googleAccount.findMany({
       where: { userId },
@@ -62,6 +65,10 @@ export async function enrichUpcomingCalendarEvents(
               watchouts,
               reason: analysis.reason,
               confidence: analysis.confidence,
+              llmProvider: llmStatus.provider,
+              llmModel: llmStatus.model,
+              promptVersion: CALENDAR_ANALYZE_PROMPT_VERSION,
+              llmAt: new Date().toISOString(),
             } as object,
           },
         });

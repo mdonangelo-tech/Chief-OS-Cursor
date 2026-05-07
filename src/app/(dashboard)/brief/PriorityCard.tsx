@@ -33,6 +33,8 @@ interface PriorityCardProps {
   categoryName: string | null;
   confidence: number | null;
   actionType: string | null;
+  prioritySummary: string | null;
+  prioritySignals: string[];
   explainJson: Record<string, unknown> | null;
   categories: Array<{ id: string; name: string }>;
 }
@@ -48,6 +50,8 @@ export function PriorityCard({
   categoryName,
   confidence,
   actionType,
+  prioritySummary,
+  prioritySignals,
   explainJson,
   categories,
 }: PriorityCardProps) {
@@ -69,6 +73,7 @@ export function PriorityCard({
     (explainJson?.reason as string) ??
     (explainJson?.categoryName as string) ??
     (explainJson?.source ? `From ${explainJson.source}` : null);
+  const whyLine = (prioritySummary ?? reason)?.trim() || null;
 
   async function postJson<T>(url: string, body: unknown): Promise<T> {
     const res = await fetch(url, {
@@ -76,9 +81,13 @@ export function PriorityCard({
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
-    const data = (await res.json().catch(() => ({}))) as any;
+    const dataUnknown = (await res.json().catch(() => ({}))) as unknown;
+    const data =
+      dataUnknown && typeof dataUnknown === "object" ? (dataUnknown as Record<string, unknown>) : {};
     if (!res.ok || data?.ok === false) {
-      throw new Error(data?.error || `Request failed (${res.status})`);
+      const errMsg =
+        typeof data?.error === "string" ? data.error : `Request failed (${res.status})`;
+      throw new Error(errMsg);
     }
     return data as T;
   }
@@ -113,7 +122,7 @@ export function PriorityCard({
   }
 
   return (
-    <article className="rounded-2xl border border-border/10 bg-surface/60 p-4 shadow-soft">
+    <article className="rounded-2xl border border-border/10 bg-surface/60 p-5 shadow-soft">
       <div className="font-medium text-foreground">{text(subject) || "(No subject)"}</div>
       <div className="text-muted-foreground text-sm mt-1 flex flex-wrap items-center gap-2">
         {text(from)}
@@ -134,6 +143,11 @@ export function PriorityCard({
       </div>
       {snippet && (
         <p className="text-muted-foreground text-sm mt-2 line-clamp-1">{text(snippet)}</p>
+      )}
+      {whyLine && (
+        <p className="text-muted-foreground/80 text-sm mt-2">
+          <span className="text-muted-foreground/70">Why now:</span> {whyLine}
+        </p>
       )}
       <div className="flex flex-wrap items-center gap-2 mt-3">
         <a
@@ -173,7 +187,7 @@ export function PriorityCard({
           onClick={() => setShowWhy((x) => !x)}
           className="text-sm text-muted-foreground hover:text-foreground"
         >
-          Why?
+          Details
         </button>
       </div>
       {showCategory && (
@@ -210,9 +224,9 @@ export function PriorityCard({
         </div>
       )}
       {error && <p className="text-xs text-red-300 mt-2">{error}</p>}
-      {showWhy && reason && (
+      {showWhy && (
         <div className="mt-2 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground italic">
-          {reason}
+          {reason ?? "Signals: " + (prioritySignals?.length ? prioritySignals.join(" · ") : "—")}
         </div>
       )}
     </article>

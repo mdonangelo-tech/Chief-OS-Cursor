@@ -1,0 +1,15 @@
+# Replace @your-handle placeholders with real GitHub handles/teams.
+
+# Default owners (fallback)
+* @your-handle
+
+# High-risk surfaces
+/src/services/gmail/ @your-handle
+/src/services/declutter/ @your-handle
+/src/services/classification/ @your-handle
+/src/services/llm/ @your-handle
+/src/app/api/cron/ @your-handle
+/src/lib/decision-engine.ts @your-handle
+/prisma/ @your-handle
+/middleware.ts @your-handle
+

@@ -23,10 +23,6 @@ function fmtDate(s: string): string {
 
 export function CalendarWatchoutsSection({ summary, byDay }: CalendarWatchoutsSectionProps) {
   const [expanded, setExpanded] = useState(false);
-  const hasAny =
-    summary.overloadedDays.length > 0 ||
-    summary.earlyStarts.length > 0 ||
-    summary.backToBackChains.length > 0;
 
   const summaryParts: string[] = [];
   if (summary.overloadedDays.length > 0) {

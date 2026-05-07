@@ -18,6 +18,10 @@ export interface ClassificationOutput {
   };
 }
 
+export const EMAIL_CLASSIFY_PROMPT_VERSION = "email_classify_v1";
+export const EMAIL_BATCH_CLASSIFY_PROMPT_VERSION = "email_batch_classify_v1";
+export const CALENDAR_ANALYZE_PROMPT_VERSION = "calendar_analyze_v1";
+
 const EXPECTED_KEYS = [
   "category_name",
   "subcategory_name",

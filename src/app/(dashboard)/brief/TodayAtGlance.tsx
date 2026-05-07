@@ -42,6 +42,13 @@ function inMinutes(m: number): string {
   return `in ${Math.round(m / 1440)}d`;
 }
 
+function fmtCompact(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  if (n < 1000) return n.toLocaleString();
+  if (n < 1_000_000) return `${Math.round((n / 1000) * 10) / 10}k`;
+  return `${Math.round((n / 1_000_000) * 10) / 10}m`;
+}
+
 export function TodayAtGlance({
   prioritiesCount,
   openLoopsCount,
@@ -62,7 +69,7 @@ export function TodayAtGlance({
   ]
     .filter(Boolean)
     .join(" · ");
-  const calendarLine = calendarNarrative?.trim() || watchouts || "No watchouts detected.";
+  const calendarLine = calendarNarrative?.trim() || watchouts || "Looks clear.";
 
   return (
     <div
@@ -76,14 +83,19 @@ export function TodayAtGlance({
           .map((a) => `${a.displayName || a.accountLabel || a.email}: ${a.messagesTotal} in inbox`)
           .join(" · ")}
       >
-        <div className="text-sm font-medium text-foreground">Inbox</div>
+        <div className="text-sm font-medium text-foreground">Inbox scan</div>
         <div className="text-muted-foreground text-sm mt-1">
-          {totalInbox.toLocaleString()} in inbox · {totalUnread.toLocaleString()} unread
-          {inboxAccounts.length > 1 ? ` · ${inboxAccounts.length} accounts` : ""}
+          {totalUnread === 0
+            ? "Nothing unread right now."
+            : `${fmtCompact(totalUnread)} unread`}
+          {inboxAccounts.length > 1 ? ` across ${inboxAccounts.length} accounts` : ""}
+        </div>
+        <div className="text-muted-foreground/70 text-xs mt-1">
+          {totalInbox > 0 ? `${fmtCompact(totalInbox)} total in inbox` : "Inbox totals unavailable."}
         </div>
         {archivedLast24h > 0 ? (
           <div className="text-muted-foreground/80 text-xs mt-2">
-            ChiefOS archived {archivedLast24h.toLocaleString()} in the last 24h.{" "}
+            ChiefOS auto-managed {fmtCompact(archivedLast24h)} in the last 24h.{" "}
             <Link href="/audit" className="text-accent hover:text-accent/80">
               Review
             </Link>
@@ -98,11 +110,15 @@ export function TodayAtGlance({
       >
         <div className="text-sm font-medium text-foreground">Focus</div>
         <div className="text-muted-foreground text-sm mt-1">
-          {prioritiesCount === 0 ? "No priorities surfaced yet." : `${prioritiesCount} priority item${prioritiesCount === 1 ? "" : "s"}.`}{" "}
-          {openLoopsCount > 0 ? `${openLoopsCount} open loop${openLoopsCount === 1 ? "" : "s"}.` : "No open loops."}
+          {prioritiesCount === 0
+            ? "Nothing urgent surfaced."
+            : `${prioritiesCount} priority item${prioritiesCount === 1 ? "" : "s"} surfaced.`}{" "}
+          {openLoopsCount > 0
+            ? `${openLoopsCount} open loop${openLoopsCount === 1 ? "" : "s"} aging.`
+            : "No aging loops."}
         </div>
         <div className="text-xs text-muted-foreground/70 mt-2">
-          Scan priorities first, then close loops that are aging.
+          If something is wrong, correct it once — ChiefOS will adapt.
         </div>
       </a>
       <a

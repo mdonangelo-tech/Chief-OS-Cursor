@@ -3,6 +3,8 @@
  * Separate from Auth.js sign-in.
  */
 
+import { logger } from "@/lib/logger";
+
 const SCOPES = [
   "openid",
   "email",
@@ -107,24 +109,10 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
         "Google authorization expired or was revoked. Reconnect your Google account in Settings → Accounts."
       );
     }
-    try {
-      const { appendFileSync } = await import("node:fs");
-      appendFileSync(
-        "/Users/mdonangelo/Chief-OS-Cursor/.cursor/debug.log",
-        JSON.stringify({
-          runId: "auto-archive",
-          hypothesisId: "H3",
-          location: "src/lib/google-oauth.ts:refreshAccessToken:fallbackFileLog",
-          message: "Google token refresh response not ok (file fallback)",
-          data: { status: res.status, errSnippet: err.slice(0, 500) },
-          timestamp: Date.now(),
-        }) + "\n"
-      );
-    } catch {
-      // ignore
-    }
-    // #region agent log
-    // #endregion
+    logger.warn("google_oauth_token_refresh_not_ok", {
+      status: res.status,
+      errSnippet: err.slice(0, 200),
+    });
     throw new Error(`Token refresh failed: ${err}`);
   }
 

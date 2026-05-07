@@ -7,6 +7,9 @@ import { prisma } from "@/lib/prisma";
 import {
   classifyEmailWithLlm,
   classifyEmailsBatchWithLlm,
+  EMAIL_BATCH_CLASSIFY_PROMPT_VERSION,
+  EMAIL_CLASSIFY_PROMPT_VERSION,
+  getLlmStatus,
   isLlmClassificationEnabled,
 } from "@/services/llm";
 
@@ -209,6 +212,7 @@ export async function classifyEmailEvent(
         categoryNames
       );
       if (llmResult && llmResult.confidence >= 0.6) {
+        const llmStatus = getLlmStatus();
         const userCategories = await prisma.category.findMany({
           where: { userId },
           select: { id: true, name: true },
@@ -233,6 +237,10 @@ export async function classifyEmailEvent(
           confidence: llmResult.confidence,
           actionType: llmResult.action_type,
           suggestedRule: llmResult.suggested_rule,
+          llmProvider: llmStatus.provider,
+          llmModel: llmStatus.model,
+          promptVersion: EMAIL_CLASSIFY_PROMPT_VERSION,
+          llmAt: new Date().toISOString(),
         };
 
         const result: ClassificationResult = {
@@ -305,6 +313,7 @@ export async function classifyAllUnclassifiedEmails(
     isLlmClassificationEnabled() &&
     needsLlm.length > 0
   ) {
+    const llmStatus = getLlmStatus();
     const categoryNames = (
       await prisma.category.findMany({
         where: { userId },
@@ -351,6 +360,10 @@ export async function classifyAllUnclassifiedEmails(
           confidence: llmResult.confidence,
           actionType: llmResult.action_type,
           suggestedRule: llmResult.suggested_rule,
+          llmProvider: llmStatus.provider,
+          llmModel: llmStatus.model,
+          promptVersion: EMAIL_BATCH_CLASSIFY_PROMPT_VERSION,
+          llmAt: new Date().toISOString(),
         };
 
         await prisma.emailEvent.update({
