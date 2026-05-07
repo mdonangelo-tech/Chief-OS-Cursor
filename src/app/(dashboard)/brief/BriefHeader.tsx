@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BriefSyncControls } from "./BriefSyncControls";
 
 interface SyncStatus {
   gmailSyncAt: string | null;
@@ -30,19 +31,25 @@ export function BriefHeader({
   llmStatus: LlmStatus;
 }) {
   return (
-    <p className="text-muted-foreground text-sm mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span>Synced: Gmail {minsAgo(syncStatus.gmailSyncAt)} · Calendar {minsAgo(syncStatus.calendarSyncAt)}</span>
-      <span>· Accounts: {syncStatus.accountsCount}</span>
-      <span>· LLM: {llmStatus.enabled ? `On (${llmStatus.provider})` : "Off"}</span>
-      {syncStatus.hasSyncErrors && (
-        <Link
-          href="/settings/accounts"
-          className="text-accent hover:text-accent/80"
-          title="Sync errors"
-        >
-          ⚠
-        </Link>
-      )}
-    </p>
+    <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+      <div className="text-muted-foreground text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span>
+          Last synced {minsAgo(syncStatus.gmailSyncAt)} · {minsAgo(syncStatus.calendarSyncAt)}
+        </span>
+        <span>· Accounts: {syncStatus.accountsCount}</span>
+        <span>· LLM: {llmStatus.enabled ? `On (${llmStatus.provider})` : "Off"}</span>
+        {syncStatus.hasSyncErrors && (
+          <Link
+            href="/settings/accounts"
+            className="text-accent hover:text-accent/80"
+            title="Sync errors"
+          >
+            Sync issues
+          </Link>
+        )}
+      </div>
+
+      <BriefSyncControls />
+    </div>
   );
 }
