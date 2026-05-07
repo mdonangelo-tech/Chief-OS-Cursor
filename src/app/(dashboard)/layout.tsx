@@ -4,6 +4,7 @@ import Link from "next/link";
 import { signOut } from "@/auth";
 import { onboardingV1Enabled } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
+import { DashboardNavLinks } from "@/app/(dashboard)/DashboardNavLinks";
 
 export default async function DashboardLayout({
   children,
@@ -33,14 +34,14 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="relative z-20 border-b border-border/10 px-4 py-3 sm:px-6 sm:py-4">
+      <header className="sticky top-0 z-20 border-b border-border/10 bg-background/80 backdrop-blur px-4 py-3 sm:px-6 sm:py-4">
         <nav role="navigation" className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between gap-3">
             <Link
               href="/brief"
               className="flex items-baseline gap-2 font-semibold text-accent hover:text-accent/80 transition-colors shrink-0"
             >
-              <span>Brief</span>
+              <span>ChiefOS</span>
               <span className="hidden sm:inline text-xs font-normal text-muted-foreground">
                 Chief of Staff
               </span>
@@ -63,31 +64,14 @@ export default async function DashboardLayout({
             </div>
           </div>
 
-          <div className="mt-3 -mx-4 px-4 pb-1 flex items-center gap-4 overflow-x-auto whitespace-nowrap sm:mt-0 sm:mx-0 sm:px-0 sm:pb-0 sm:gap-6 sm:overflow-visible">
-            <Link href="/brief" className="text-muted-foreground hover:text-foreground transition-colors">
-              Brief
-            </Link>
-            <Link
-              href="/settings/declutter"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Declutter
-            </Link>
-            <Link href="/audit" className="text-muted-foreground hover:text-foreground transition-colors">
-              Audit
-            </Link>
-            <Link
-              href="/settings/accounts"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Accounts
-            </Link>
-            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">
-              Settings
-            </Link>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <DashboardNavLinks />
             {onboardingV1Enabled() && !hasCompletedOnboarding && (
-              <Link href="/onboarding" className="text-accent hover:text-accent/80 transition-colors">
-                Finish onboarding
+              <Link
+                href="/onboarding"
+                className="text-sm font-medium text-accent hover:text-accent/80 transition-colors shrink-0"
+              >
+                Finish setup
               </Link>
             )}
           </div>

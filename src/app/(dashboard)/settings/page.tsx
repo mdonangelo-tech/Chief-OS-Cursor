@@ -81,6 +81,14 @@ export default async function SettingsHomePage() {
           <div className="text-sm text-muted-foreground mt-1">Organize categories and protection rules.</div>
         </Link>
 
+        <Link
+          href="/audit"
+          className="rounded-2xl border border-border/10 bg-surface/50 p-5 hover:bg-surface2/60 transition-colors shadow-soft"
+        >
+          <div className="font-medium text-foreground">Audit</div>
+          <div className="text-sm text-muted-foreground mt-1">See what ChiefOS did and undo safely.</div>
+        </Link>
+
         {onboardingV1Enabled() && (
           <Link
             href="/settings/onboarding"

@@ -5,6 +5,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getInboxStats } from "@/services/gmail/labels";
+import { inferAccountTypeFromEmail } from "@/lib/onboarding/infer";
 
 const EXCLUDE_PRIORITY_CATEGORIES = ["Newsletters", "Promotions", "Low-priority"];
 const BOOST_CATEGORIES = ["Work", "Portfolio", "Job Search", "Kids logistics"];
@@ -53,8 +54,11 @@ export interface BriefPayload {
     accountId: string;
     email: string;
     accountLabel: string | null;
+    accountType: "work" | "personal" | "unknown";
+    displayName: string | null;
     messagesTotal: number;
     messagesUnread: number;
+    archivedLast24h: number;
   }>;
   categories: Array<{ id: string; name: string }>;
   llmStatus: { enabled: boolean; provider: string; model: string };
@@ -64,6 +68,7 @@ export interface BriefPayload {
     threadId: string;
     googleAccountId: string;
     accountLabel: string;
+    accountType: "work" | "personal" | "unknown";
     subject: string | null;
     from: string;
     snippet: string | null;
@@ -82,6 +87,7 @@ export interface BriefPayload {
     lastFrom: string;
     googleAccountId: string;
     accountLabel: string;
+    accountType: "work" | "personal" | "unknown";
   }>;
   calendarWatchouts: {
     summary: {
@@ -126,6 +132,30 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
   const accountIds = accounts.map((a) => a.id);
   const accountById = new Map(accounts.map((a) => [a.id, a]));
 
+  let preferences: Array<{
+    googleAccountId: string;
+    accountType: "work" | "personal" | "unknown";
+    displayName: string | null;
+  }> = [];
+  try {
+    preferences = await prisma.userAccountPreference.findMany({
+      where: { userId, googleAccountId: { in: accountIds } },
+      select: { googleAccountId: true, accountType: true, displayName: true },
+    });
+  } catch {
+    preferences = [];
+  }
+  const prefByAccountId = new Map(preferences.map((p) => [p.googleAccountId, p] as const));
+  const accountTypeById = new Map(
+    accounts.map((a) => [
+      a.id,
+      prefByAccountId.get(a.id)?.accountType ?? inferAccountTypeFromEmail(a.email),
+    ] as const)
+  );
+  const displayNameById = new Map(
+    accounts.map((a) => [a.id, prefByAccountId.get(a.id)?.displayName ?? null] as const)
+  );
+
   const [
     unreadEmails,
     upcomingEvents,
@@ -164,6 +194,20 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       select: { id: true, name: true },
     }),
   ]);
+
+  const perAccountArchives = await prisma.auditLog.groupBy({
+    by: ["googleAccountId"],
+    where: {
+      userId,
+      actionType: "ARCHIVE",
+      timestamp: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      rollbackStatus: "applied",
+    },
+    _count: { _all: true },
+  });
+  const archivedLast24hByAccountId = new Map(
+    perAccountArchives.map((r) => [r.googleAccountId, r._count._all] as const)
+  );
 
   const catNames = new Set(categories.map((c) => c.name));
   const digestEmails = unreadEmails.filter((e) => isDigestCategory(e.category?.name ?? null));
@@ -221,6 +265,9 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     const sorted = [...emails].sort((a, b) => b.date.getTime() - a.date.getTime());
     const latest = sorted[0];
     const acc = accountById.get(latest.googleAccountId)!;
+    const accountType =
+      accountTypeById.get(latest.googleAccountId) ?? inferAccountTypeFromEmail(acc.email);
+    const accountLabel = acc.userDefinedLabel || (accountType === "work" ? "Work" : "Personal");
     const fromEmail = extractEmail(latest.from_);
     const isFromUser = acc && fromEmail && acc.email.toLowerCase() === fromEmail;
     const days = daysAgo(latest.date);
@@ -232,7 +279,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
         subject: latest.subject,
         isFromUser: true,
         googleAccountId: latest.googleAccountId,
-        accountLabel: acc.userDefinedLabel || "Personal",
+        accountLabel,
       });
     } else if (!isFromUser && latest.date < cutoffWait && days >= WAITING_REPLY_DAYS) {
       openLoopCandidates.push({
@@ -242,7 +289,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
         subject: latest.subject,
         isFromUser: false,
         googleAccountId: latest.googleAccountId,
-        accountLabel: acc.userDefinedLabel || "Personal",
+        accountLabel,
       });
     }
   }
@@ -390,13 +437,29 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
         accountId: a.id,
         email: a.email,
         accountLabel: a.userDefinedLabel,
+        accountType: accountTypeById.get(a.id) ?? inferAccountTypeFromEmail(a.email),
+        displayName: displayNameById.get(a.id) ?? null,
         messagesTotal: stats.messagesTotal,
         messagesUnread: stats.messagesUnread,
+        archivedLast24h: archivedLast24hByAccountId.get(a.id) ?? 0,
       };
     })
   );
   const inboxByAccount = inboxResults
-    .filter((r): r is PromiseFulfilledResult<{ accountId: string; email: string; accountLabel: string | null; messagesTotal: number; messagesUnread: number }> => r.status === "fulfilled")
+    .filter(
+      (
+        r
+      ): r is PromiseFulfilledResult<{
+        accountId: string;
+        email: string;
+        accountLabel: string | null;
+        accountType: "work" | "personal" | "unknown";
+        displayName: string | null;
+        messagesTotal: number;
+        messagesUnread: number;
+        archivedLast24h: number;
+      }> => r.status === "fulfilled"
+    )
     .map((r) => r.value);
 
   const fmt = (d: Date) => {
@@ -439,12 +502,15 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     },
     topPriorities: priorities.map((e) => {
       const acc = accountById.get(e.googleAccountId)!;
+      const accountType = accountTypeById.get(e.googleAccountId) ?? inferAccountTypeFromEmail(acc.email);
+      const accountLabel = acc.userDefinedLabel || (accountType === "work" ? "Work" : "Personal");
       return {
         id: e.id,
         messageId: e.messageId,
         threadId: e.threadId,
         googleAccountId: e.googleAccountId,
-        accountLabel: acc.userDefinedLabel || "Personal",
+        accountLabel,
+        accountType,
         subject: e.subject,
         from: e.from_,
         snippet: e.snippet,
@@ -464,6 +530,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       lastFrom: o.lastFrom,
       googleAccountId: o.googleAccountId,
       accountLabel: o.accountLabel,
+      accountType: accountTypeById.get(o.googleAccountId) ?? "unknown",
     })),
     calendarWatchouts: {
       summary: {

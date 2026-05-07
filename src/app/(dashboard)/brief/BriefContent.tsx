@@ -12,23 +12,28 @@ import Link from "next/link";
 type AccountFilter = "all" | "personal" | "work";
 const MAX_OPEN_LOOPS_RENDER = 30;
 
-function matchFilter(label: string | null, filter: AccountFilter): boolean {
+function matchFilter(
+  accountType: "work" | "personal" | "unknown" | null | undefined,
+  filter: AccountFilter
+): boolean {
   if (filter === "all") return true;
-  const l = (label || "personal").toLowerCase();
-  if (filter === "personal") return l === "personal";
-  if (filter === "work") return l === "work";
-  return true;
+  if (accountType === "unknown" || !accountType) return filter === "personal";
+  return accountType === filter;
 }
 
 export function BriefContent({ payload }: { payload: BriefPayload }) {
   const [accountFilter, setAccountFilter] = useState<AccountFilter>("all");
 
   const priorities = payload.topPriorities.filter((p) =>
-    matchFilter(p.accountLabel, accountFilter)
+    matchFilter(p.accountType, accountFilter)
   );
   const openLoops = payload.openLoops.filter((o) =>
-    matchFilter(o.accountLabel, accountFilter)
+    matchFilter(o.accountType, accountFilter)
   );
+  const inboxByAccount = (payload.inboxByAccount ?? []).filter((a) =>
+    matchFilter(a.accountType, accountFilter)
+  );
+  const archivedLast24h = inboxByAccount.reduce((s, a) => s + (a.archivedLast24h ?? 0), 0);
 
   return (
     <div className="space-y-8">
@@ -38,6 +43,7 @@ export function BriefContent({ payload }: { payload: BriefPayload }) {
             key={f}
             type="button"
             onClick={() => setAccountFilter(f)}
+            aria-pressed={accountFilter === f}
             className={`rounded-xl px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
               accountFilter === f
                 ? "bg-accent text-accent-foreground"
@@ -53,9 +59,10 @@ export function BriefContent({ payload }: { payload: BriefPayload }) {
         prioritiesCount={priorities.length}
         openLoopsCount={openLoops.length}
         nextMeeting={payload.summary.nextMeeting}
+        calendarNarrative={payload.calendarWatchouts.summary.narrative ?? null}
         calendarWatchouts={payload.summary.calendarWatchouts}
-        archivedLast24h={payload.summary.archivedLast24h}
-        inboxByAccount={payload.inboxByAccount}
+        archivedLast24h={archivedLast24h}
+        inboxByAccount={inboxByAccount}
       />
 
       <section id="priorities" className="scroll-mt-6">
