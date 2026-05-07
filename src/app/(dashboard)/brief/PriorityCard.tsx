@@ -92,7 +92,7 @@ export function PriorityCard({
     return data as T;
   }
 
-  function submitFeedback(feedback: "dismiss" | "not_important") {
+  function submitFeedback(feedback: "acknowledge" | "not_important") {
     startTransition(async () => {
       setError(null);
       try {
@@ -169,10 +169,10 @@ export function PriorityCard({
         <button
           type="button"
           disabled={saving}
-          onClick={() => submitFeedback("dismiss")}
+          onClick={() => submitFeedback("acknowledge")}
           className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
-          Dismiss
+          Acknowledge
         </button>
         <button
           type="button"

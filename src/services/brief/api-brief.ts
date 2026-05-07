@@ -123,7 +123,15 @@ export interface BriefPayload {
       id: string;
       title: string | null;
       startAt: string;
+      accountType: "work" | "personal" | "unknown";
+      accountLabel: string;
       flags: string[];
+      insights?: {
+        focusType?: string;
+        reason?: string;
+        watchouts?: string[];
+        confidence?: number;
+      };
     }>>;
   };
   digest: {
@@ -238,6 +246,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
   const nonDigest = unreadEmails.filter((e) => !isDigestCategory(e.category?.name ?? null));
 
   function toPriorityInput(e: (typeof nonDigest)[number]): PriorityEmailInput {
+    const fromEmail = extractEmail(e.from_) ?? null;
     return {
       id: e.id,
       unread: e.unread,
@@ -246,6 +255,8 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       actionType: e.actionType ?? null,
       confidence: e.confidence ?? null,
       categoryName: e.category?.name ?? null,
+      senderDomain: e.senderDomain ?? null,
+      fromEmail,
       briefDismissedAt: e.briefDismissedAt ?? null,
       briefNotImportantAt: e.briefNotImportantAt ?? null,
       explainJson: (e.explainJson as Record<string, unknown>) ?? null,
@@ -350,8 +361,13 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     )
     .slice(0, MAX_OPEN_LOOPS);
 
-  const eventsByDay = new Map<string, typeof upcomingEvents>();
-  for (const e of upcomingEvents) {
+  const visibleUpcomingEvents = upcomingEvents.filter((e) => {
+    const ex = (e.explainJson as Record<string, unknown> | null) ?? null;
+    return !ex?.briefHiddenAt;
+  });
+
+  const eventsByDay = new Map<string, typeof visibleUpcomingEvents>();
+  for (const e of visibleUpcomingEvents) {
     const k = e.startAt.toISOString().slice(0, 10);
     if (!eventsByDay.has(k)) eventsByDay.set(k, []);
     eventsByDay.get(k)!.push(e);
@@ -372,8 +388,8 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     }
   }
   const backToBackByDay = new Map<string, number>();
-  for (const e of upcomingEvents) {
-    const after = upcomingEvents.find(
+  for (const e of visibleUpcomingEvents) {
+    const after = visibleUpcomingEvents.find(
       (o) => o.id !== e.id && o.startAt >= e.endAt && o.startAt.getTime() - e.endAt.getTime() < 15 * 60 * 1000
     );
     if (after) {
@@ -385,9 +401,9 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     backToBackChains.push({ date, count });
   }
 
-  const meetingEvents = upcomingEvents.filter((e) => (e.attendees?.length ?? 0) >= 2);
+  const meetingEvents = visibleUpcomingEvents.filter((e) => (e.attendees?.length ?? 0) >= 2);
   const familyKeyword = /\b(school|pickup|drop[- ]?off|soccer|practice|kids?|camp|birthday|pediatric|dentist|daycare)\b/i;
-  const familyEvents = upcomingEvents.filter((e) => familyKeyword.test(e.title ?? ""));
+  const familyEvents = visibleUpcomingEvents.filter((e) => familyKeyword.test(e.title ?? ""));
   const meetingHours = meetingEvents.reduce((s, e) => {
     const mins =
       typeof e.durationMinutes === "number" && Number.isFinite(e.durationMinutes)
@@ -438,26 +454,63 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     };
   });
 
-  const byDayFormatted: Record<string, Array<{ id: string; title: string | null; startAt: string; flags: string[] }>> = {};
-  for (const e of upcomingEvents) {
+  const byDayFormatted: Record<
+    string,
+    Array<{
+      id: string;
+      title: string | null;
+      startAt: string;
+      accountType: "work" | "personal" | "unknown";
+      accountLabel: string;
+      flags: string[];
+      insights?: {
+        focusType?: string;
+        reason?: string;
+        watchouts?: string[];
+        confidence?: number;
+      };
+    }>
+  > = {};
+  for (const e of visibleUpcomingEvents) {
     const k = e.startAt.toISOString().slice(0, 10);
     if (!byDayFormatted[k]) byDayFormatted[k] = [];
     const flags: string[] = [];
     if (eventsByDay.get(k)?.length && (eventsByDay.get(k)?.length ?? 0) >= 5) flags.push("overloaded");
     if (e.startAt.getHours() < 8) flags.push("early");
-    const bb = upcomingEvents.find(
+    const bb = visibleUpcomingEvents.find(
       (o) => o.id !== e.id && o.startAt >= e.endAt && o.startAt.getTime() - e.endAt.getTime() < 15 * 60 * 1000
     );
     if (bb) flags.push("back-to-back");
+
+    const acc = accountById.get(e.googleAccountId)!;
+    const accountType = accountTypeById.get(e.googleAccountId) ?? inferAccountTypeFromEmail(acc.email);
+    const accountLabel = acc.userDefinedLabel || (accountType === "work" ? "Work" : "Personal");
+
+    const ex = (e.explainJson as Record<string, unknown> | null) ?? null;
+    const insights =
+      ex && ex.source === "llm"
+        ? {
+            focusType: typeof ex.focus_type === "string" ? ex.focus_type : undefined,
+            reason: typeof ex.reason === "string" ? ex.reason : undefined,
+            watchouts: Array.isArray(ex.watchouts)
+              ? (ex.watchouts.filter((w) => typeof w === "string") as string[])
+              : undefined,
+            confidence: typeof ex.confidence === "number" ? ex.confidence : undefined,
+          }
+        : undefined;
+
     byDayFormatted[k].push({
       id: e.id,
       title: e.title,
       startAt: e.startAt.toISOString(),
+      accountType,
+      accountLabel,
       flags,
+      ...(insights ? { insights } : {}),
     });
   }
 
-  const nextEv = upcomingEvents[0];
+  const nextEv = visibleUpcomingEvents[0];
   const { getLlmStatus } = await import("@/services/llm");
   const llmStatus = getLlmStatus();
 
