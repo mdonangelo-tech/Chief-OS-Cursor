@@ -4,7 +4,7 @@ import Link from "next/link";
 import { signOut } from "@/auth";
 import { onboardingV1Enabled } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
-import { DashboardNavLinks } from "@/app/(dashboard)/DashboardNavLinks";
+import { SidebarNavLinks } from "@/app/(dashboard)/SidebarNavLinks";
 
 export default async function DashboardLayout({
   children,
@@ -32,52 +32,85 @@ export default async function DashboardLayout({
     }
   }
 
+  const connectedAccountsCount = await prisma.googleAccount.count({
+    where: { userId },
+  });
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border/10 bg-background/80 backdrop-blur px-4 py-3 sm:px-6 sm:py-4">
-        <nav role="navigation" className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between gap-3">
+    <div className="min-h-screen bg-background text-foreground flex">
+      <aside className="hidden sm:flex w-64 shrink-0 border-r border-border/10 bg-background/80 backdrop-blur flex-col sticky top-0 h-screen">
+        <div className="px-4 py-4">
+          <Link
+            href="/brief"
+            className="flex items-baseline gap-2 font-semibold text-accent hover:text-accent/80 transition-colors"
+          >
+            <span>ChiefOS</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              Chief of Staff
+            </span>
+          </Link>
+
+          <div className="mt-5">
+            <SidebarNavLinks
+              showFinishSetup={onboardingV1Enabled() && !hasCompletedOnboarding}
+            />
+          </div>
+        </div>
+
+        <div className="mt-auto border-t border-border/10 px-4 py-4">
+          <div className="text-sm font-medium text-foreground truncate">
+            {session.user.name ?? "Signed in"}
+          </div>
+          <div className="text-xs text-muted-foreground truncate mt-0.5">
+            {session.user.email ?? ""}
+          </div>
+          <div className="text-xs text-muted-foreground/80 mt-2">
+            Connected accounts: {connectedAccountsCount.toLocaleString()}
+          </div>
+          <form
+            className="mt-3"
+            action={async () => {
+              "use server";
+              await signOut({ redirectTo: "/" });
+            }}
+          >
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-surface2/60 px-3 py-2 text-sm font-medium text-foreground hover:bg-surface2/80 transition-colors"
+            >
+              Sign out
+            </button>
+          </form>
+        </div>
+      </aside>
+
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="sticky top-0 z-20 border-b border-border/10 bg-background/80 backdrop-blur px-4 py-3 sm:px-6 sm:py-4">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
             <Link
               href="/brief"
-              className="flex items-baseline gap-2 font-semibold text-accent hover:text-accent/80 transition-colors shrink-0"
+              className="sm:hidden flex items-baseline gap-2 font-semibold text-accent hover:text-accent/80 transition-colors"
             >
               <span>ChiefOS</span>
-              <span className="hidden sm:inline text-xs font-normal text-muted-foreground">
-                Chief of Staff
-              </span>
             </Link>
-
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="hidden sm:inline text-sm text-muted-foreground">
-                {session.user.email ?? session.user.name}
-              </span>
-              <form
-                action={async () => {
-                  "use server";
-                  await signOut({ redirectTo: "/" });
-                }}
-              >
-                <button type="submit" className="text-sm text-muted-foreground hover:text-foreground">
-                  Sign out
-                </button>
-              </form>
+            <div className="text-sm text-muted-foreground">
+              {onboardingV1Enabled() && !hasCompletedOnboarding ? (
+                <Link
+                  href="/settings/personal/setup"
+                  className="text-sm font-medium text-accent hover:text-accent/80 transition-colors"
+                >
+                  Finish setup
+                </Link>
+              ) : (
+                <span className="hidden sm:inline">Workspace</span>
+              )}
             </div>
           </div>
-
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <DashboardNavLinks />
-            {onboardingV1Enabled() && !hasCompletedOnboarding && (
-              <Link
-                href="/settings/personal/setup"
-                className="text-sm font-medium text-accent hover:text-accent/80 transition-colors shrink-0"
-              >
-                Finish setup
-              </Link>
-            )}
-          </div>
-        </nav>
-      </header>
-      <main className="max-w-4xl mx-auto p-4 sm:p-6">{children}</main>
+        </header>
+        <main className="flex-1 p-4 sm:p-6">
+          <div className="max-w-6xl mx-auto">{children}</div>
+        </main>
+      </div>
     </div>
   );
 }
