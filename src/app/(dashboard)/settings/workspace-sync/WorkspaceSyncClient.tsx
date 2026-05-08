@@ -135,9 +135,13 @@ export function WorkspaceSyncClient({
           periodicRefreshHours: mode === "smart_periodic" ? periodicHours : null,
         }),
       });
-      const data = (await res.json().catch(() => ({}))) as any;
-      if (!res.ok || data?.ok === false) {
-        throw new Error(data?.error || `Save failed (${res.status})`);
+      const dataUnknown = (await res.json().catch(() => ({}))) as unknown;
+      const data =
+        dataUnknown && typeof dataUnknown === "object"
+          ? (dataUnknown as Record<string, unknown>)
+          : {};
+      if (!res.ok || data.ok === false) {
+        throw new Error(typeof data.error === "string" ? data.error : `Save failed (${res.status})`);
       }
       setSaved(true);
     } catch (e) {
@@ -186,7 +190,7 @@ export function WorkspaceSyncClient({
             className="w-full rounded-xl border border-border/10 bg-background px-3 py-2 text-sm text-foreground"
           >
             <option value="morning_prep">Morning prep only</option>
-            <option value="smart_periodic">Smart periodic refresh</option>
+            <option value="smart_periodic">Smart periodic updates</option>
             <option value="manual">Manual only</option>
           </select>
         </label>
@@ -206,23 +210,23 @@ export function WorkspaceSyncClient({
           <div className="text-xs text-muted-foreground/70">
             {mode === "smart_periodic"
               ? "Not real-time; just a lightweight freshness baseline."
-              : "Enable Smart periodic refresh to use this."}
+              : "Enable Smart periodic updates to use this."}
           </div>
         </label>
       </div>
 
       <div className="rounded-xl bg-muted/60 px-4 py-3">
-        <div className="text-xs text-muted-foreground">Cron guidance (single UTC schedule)</div>
+        <div className="text-xs text-muted-foreground">Schedule guidance</div>
         {cron ? (
           <div className="text-sm text-foreground/90 mt-1">
-            For {timezone.trim()} at {morningTime}: winter ≈ <span className="font-medium">{cron.winter}</span>, summer ≈{" "}
+            For {timezone.trim()} at {morningTime}: winter roughly <span className="font-medium">{cron.winter}</span>, summer roughly{" "}
             <span className="font-medium">{cron.summer}</span>.
           </div>
         ) : (
           <div className="text-sm text-muted-foreground mt-1">Set a timezone to see the UTC conversion.</div>
         )}
         <div className="text-xs text-muted-foreground/70 mt-2">
-          With one UTC cron, DST can shift the effective local time. We’ll document the limitation and a best-fit schedule.
+          Daylight saving time can shift automated updates. Use this as a best-fit schedule check.
         </div>
       </div>
 

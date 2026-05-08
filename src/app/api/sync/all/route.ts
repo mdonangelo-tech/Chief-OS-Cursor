@@ -3,6 +3,7 @@ import { syncGmailForUser } from "@/services/gmail/sync";
 import { syncCalendarForUser } from "@/services/calendar/sync";
 import { enrichUpcomingCalendarEvents } from "@/services/classification/calendar";
 import { asDbErrorInfo } from "@/lib/db-errors";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 /**
@@ -23,6 +24,10 @@ export async function POST() {
 
     const hasErrors =
       gmail.some((r) => r.errors?.length) || calendar.some((r) => r.errors?.length);
+    const gmailChanged = gmail.reduce((sum, r) => sum + r.created + r.updated, 0);
+    const calendarChanged = calendar.reduce((sum, r) => sum + r.created + r.updated, 0);
+    const gmailFetched = gmail.reduce((sum, r) => sum + r.fetched, 0);
+    const calendarFetched = calendar.reduce((sum, r) => sum + r.fetched, 0);
 
     const allAccountsNeedReconnect =
       gmail.length > 0 &&
@@ -34,6 +39,9 @@ export async function POST() {
         (r.errors ?? []).some((e) => e.toLowerCase().includes("reconnect"))
       );
 
+    revalidatePath("/brief");
+    revalidatePath("/settings/accounts");
+
     return NextResponse.json({
       ok: true,
       gmail,
@@ -41,6 +49,19 @@ export async function POST() {
       enrichment: enrichment.total > 0 ? enrichment : undefined,
       hasErrors,
       reconnectRequired: allAccountsNeedReconnect,
+      summary: {
+        gmail: {
+          fetched: gmailFetched,
+          changed: gmailChanged,
+          errors: gmail.reduce((sum, r) => sum + (r.errors?.length ?? 0), 0),
+        },
+        calendar: {
+          fetched: calendarFetched,
+          changed: calendarChanged,
+          errors: calendar.reduce((sum, r) => sum + (r.errors?.length ?? 0), 0),
+        },
+        changed: gmailChanged + calendarChanged,
+      },
     });
   } catch (err) {
     console.error("Sync all error:", err);

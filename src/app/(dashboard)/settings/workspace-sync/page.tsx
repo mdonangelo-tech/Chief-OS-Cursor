@@ -21,14 +21,14 @@ export default async function WorkspaceSyncSettingsPage() {
     <div className="max-w-2xl space-y-6">
       <div className="text-sm text-muted-foreground">
         <Link href="/settings" className="hover:text-foreground">
-          ← Back to Settings
+          ← Back to Settings overview
         </Link>
       </div>
 
       <div>
-        <h1 className="text-2xl font-semibold">Workspace &amp; Sync</h1>
+        <h1 className="text-2xl font-semibold">Brief freshness</h1>
         <p className="text-muted-foreground mt-1">
-          Control when ChiefOS refreshes and how “freshness” feels in your Brief.
+          Control when ChiefOS updates the context behind your Brief.
         </p>
       </div>
 
@@ -56,7 +56,7 @@ export default async function WorkspaceSyncSettingsPage() {
           href="/settings/personal/setup/manage"
           className="text-sm text-muted-foreground hover:text-foreground"
         >
-          Workspace refresh
+          Personalization refresh
         </Link>
       </div>
     </div>

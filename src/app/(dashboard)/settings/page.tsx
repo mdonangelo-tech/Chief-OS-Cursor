@@ -22,8 +22,8 @@ export default async function SettingsHomePage() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-muted-foreground mt-1">Make ChiefOS work the way you do.</p>
+        <h1 className="text-2xl font-semibold">Settings overview</h1>
+        <p className="text-muted-foreground mt-1">Tune the assistant, connect context, and keep ChiefOS trustworthy.</p>
       </div>
 
       {onboardingV1Enabled() && !lastOnboardingRun && (
@@ -101,9 +101,9 @@ export default async function SettingsHomePage() {
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="font-medium text-foreground">Workspace &amp; Sync</div>
+                  <div className="font-medium text-foreground">Brief freshness</div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Refresh behavior, morning prep, and sync preferences.
+                    Control when ChiefOS updates the context behind your Brief.
                   </div>
                 </div>
                 <span className="text-muted-foreground group-hover:text-foreground transition-colors">
@@ -160,9 +160,9 @@ export default async function SettingsHomePage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="font-medium text-foreground">Workspace refresh</div>
+                    <div className="font-medium text-foreground">Personalization refresh</div>
                     <div className="text-sm text-muted-foreground mt-1">
-                      Refresh insights and recommendations.
+                      Rerun setup when goals, accounts, or preferences change.
                     </div>
                   </div>
                   <span className="text-muted-foreground group-hover:text-foreground transition-colors">

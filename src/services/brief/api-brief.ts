@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getInboxStats } from "@/services/gmail/labels";
 import { inferAccountTypeFromEmail } from "@/lib/onboarding/infer";
 import { getRuleSuggestionsForUser } from "@/services/declutter/suggestions";
+import { formatLocalTime, localDayKey, localHour, safeTimeZone } from "@/lib/calendar-time";
 import {
   buildPriorityExplanation as buildPriorityExplanationPure,
   computePriorityScore as computePriorityScorePure,
@@ -82,6 +83,10 @@ export interface BriefPayload {
     band: "high" | "mid";
     recommendedRuleType: "domain" | "sender";
     recommendedValue: string;
+    email: string | null;
+    domain: string | null;
+    needsSender: boolean;
+    needsDomain: boolean;
   }>;
   topPriorities: Array<{
     id: string;
@@ -119,6 +124,8 @@ export interface BriefPayload {
       earlyStarts: Array<{ date: string; time: string }>;
       backToBackChains: Array<{ date: string; count: number }>;
     };
+    localTodayKey: string;
+    timeZone: string;
     byDay: Record<string, Array<{
       id: string;
       title: string | null;
@@ -193,6 +200,8 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     auditCount,
     categories,
     suggestedActions,
+    calendarPrefs,
+    activeGoals,
   ] = await Promise.all([
     prisma.emailEvent.findMany({
       where: {
@@ -226,7 +235,19 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       select: { id: true, name: true },
     }),
     getRuleSuggestionsForUser({ userId, googleAccountIds: accountIds, limit: 4 }),
+    prisma.userCalendarPreferences.findUnique({
+      where: { userId },
+      select: { timezone: true },
+    }),
+    prisma.goal.findMany({
+      where: { userId },
+      select: { title: true },
+      orderBy: { createdAt: "asc" },
+      take: 6,
+    }),
   ]);
+  const timeZone = safeTimeZone(calendarPrefs?.timezone ?? null);
+  const localToday = localDayKey(new Date(), timeZone);
 
   const perAccountArchives = await prisma.auditLog.groupBy({
     by: ["googleAccountId"],
@@ -368,7 +389,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
 
   const eventsByDay = new Map<string, typeof visibleUpcomingEvents>();
   for (const e of visibleUpcomingEvents) {
-    const k = e.startAt.toISOString().slice(0, 10);
+    const k = localDayKey(e.startAt, timeZone);
     if (!eventsByDay.has(k)) eventsByDay.set(k, []);
     eventsByDay.get(k)!.push(e);
   }
@@ -379,10 +400,10 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
   for (const [day, evs] of eventsByDay) {
     if (evs.length >= 5) overloaded.push({ date: day, count: evs.length });
     for (const e of evs) {
-      if (e.startAt.getHours() < 8) {
+      if (localHour(e.startAt, timeZone) < 8) {
         earlyStarts.push({
           date: day,
-          time: e.startAt.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+          time: formatLocalTime(e.startAt, timeZone),
         });
       }
     }
@@ -393,7 +414,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       (o) => o.id !== e.id && o.startAt >= e.endAt && o.startAt.getTime() - e.endAt.getTime() < 15 * 60 * 1000
     );
     if (after) {
-      const k = e.startAt.toISOString().slice(0, 10);
+      const k = localDayKey(e.startAt, timeZone);
       backToBackByDay.set(k, (backToBackByDay.get(k) ?? 0) + 1);
     }
   }
@@ -413,15 +434,18 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
   }, 0);
 
   let calendarNarrative: string | undefined;
-  // Keep calendar narratives sparse and meaningful; prefer silence over generic summaries.
-  if (meetingHours >= 8) {
-    calendarNarrative = `Heavy meeting load this week (~${Math.round(meetingHours)}h).`;
-  } else if (overloaded.length > 0) {
-    calendarNarrative = "A few days look packed.";
+  // Keep calendar guidance action-oriented; metrics remain supporting evidence below.
+  const visibleGoal = activeGoals.find((g) => g.title?.trim());
+  if (visibleGoal && meetingHours >= 6) {
+    calendarNarrative = `Protect time for ${visibleGoal.title}; meetings may crowd it out this week.`;
   } else if (backToBackChains.length > 0 && meetingEvents.length >= 4) {
-    calendarNarrative = "High context-switching risk on a few days this week.";
+    calendarNarrative = "A few meetings are tightly stacked; choose one prep block before they start.";
+  } else if (overloaded.length > 0) {
+    calendarNarrative = "Pick the meetings that need preparation and protect one recovery block.";
   } else if (familyEvents.length >= 2 && meetingHours >= 2) {
-    calendarNarrative = "Work + family logistics overlap this week.";
+    calendarNarrative = "Work and family logistics overlap this week; keep buffers visible.";
+  } else if (meetingHours === 0 && visibleGoal) {
+    calendarNarrative = `No meetings are blocking your week; reserve time for ${visibleGoal.title}.`;
   }
 
   const digestByCategory: Record<string, { newCount: number; olderThan48hCount: number }> = {};
@@ -472,11 +496,11 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     }>
   > = {};
   for (const e of visibleUpcomingEvents) {
-    const k = e.startAt.toISOString().slice(0, 10);
+    const k = localDayKey(e.startAt, timeZone);
     if (!byDayFormatted[k]) byDayFormatted[k] = [];
     const flags: string[] = [];
     if (eventsByDay.get(k)?.length && (eventsByDay.get(k)?.length ?? 0) >= 5) flags.push("overloaded");
-    if (e.startAt.getHours() < 8) flags.push("early");
+    if (localHour(e.startAt, timeZone) < 8) flags.push("early");
     const bb = visibleUpcomingEvents.find(
       (o) => o.id !== e.id && o.startAt >= e.endAt && o.startAt.getTime() - e.endAt.getTime() < 15 * 60 * 1000
     );
@@ -608,6 +632,10 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       band: s.band,
       recommendedRuleType: s.recommendedRuleType,
       recommendedValue: s.recommendedValue,
+      email: s.email,
+      domain: s.domain,
+      needsSender: s.needsSender,
+      needsDomain: s.needsDomain,
     })),
     topPriorities: priorities.map((e) => {
       const acc = accountById.get(e.googleAccountId)!;
@@ -651,6 +679,8 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
         earlyStarts: earlyStarts.slice(0, 5),
         backToBackChains: Array.from(backToBackByDay.entries()).map(([date, count]) => ({ date, count })),
       },
+      localTodayKey: localToday,
+      timeZone,
       byDay: byDayFormatted,
     },
     digest: {

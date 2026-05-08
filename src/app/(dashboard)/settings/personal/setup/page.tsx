@@ -102,7 +102,7 @@ export default async function PersonalSetupIntroPage() {
               Manage accounts →
             </Link>
             <Link href="/settings/personal/setup/manage" className="text-sm text-muted-foreground hover:text-foreground">
-              Workspace refresh
+              Personalization refresh
             </Link>
           </div>
         </div>

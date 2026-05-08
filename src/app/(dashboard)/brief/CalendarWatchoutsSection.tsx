@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { labelLocalDayKey } from "@/lib/calendar-time";
 
 interface CalendarWatchoutsSectionProps {
   summary: {
@@ -22,42 +23,43 @@ interface CalendarWatchoutsSectionProps {
       insights?: { focusType?: string; reason?: string; watchouts?: string[]; confidence?: number };
     }>
   >;
+  localTodayKey: string;
+  timeZone: string;
 }
 
-function fmtDate(s: string): string {
-  const d = new Date(s);
-  const today = new Date();
-  const diff = Math.floor((d.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Tomorrow";
-  return d.toLocaleDateString(undefined, { weekday: "short" });
+function fmtDate(s: string, todayKey: string): string {
+  return labelLocalDayKey(s, todayKey);
 }
 
-export function CalendarWatchoutsSection({ summary, byDay }: CalendarWatchoutsSectionProps) {
+export function CalendarWatchoutsSection({
+  summary,
+  byDay,
+  localTodayKey,
+  timeZone,
+}: CalendarWatchoutsSectionProps) {
   const [expanded, setExpanded] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const router = useRouter();
 
-  const todayKey = new Date().toISOString().slice(0, 10);
-  const todayEvents = byDay[todayKey] ?? [];
+  const todayEvents = byDay[localTodayKey] ?? [];
 
   const summaryParts: string[] = [];
   if (summary.overloadedDays.length > 0) {
     summaryParts.push(
-      `Overloaded: ${summary.overloadedDays.map((d) => `${fmtDate(d.date)} (${d.count})`).join(", ")}`
+      `Packed: ${summary.overloadedDays.map((d) => `${fmtDate(d.date, localTodayKey)} (${d.count})`).join(", ")}`
     );
   }
   if (summary.earlyStarts.length > 0) {
     summaryParts.push(
       `Early: ${summary.earlyStarts
         .slice(0, 3)
-        .map((e) => `${fmtDate(e.date)} ${e.time}`)
+        .map((e) => `${fmtDate(e.date, localTodayKey)} ${e.time}`)
         .join(", ")}`
     );
   }
   if (summary.backToBackChains.length > 0) {
     summaryParts.push(
-      `Back-to-back: ${summary.backToBackChains.map((b) => `${fmtDate(b.date)} (${b.count})`).join(", ")}`
+      `Tightly stacked: ${summary.backToBackChains.map((b) => `${fmtDate(b.date, localTodayKey)} (${b.count})`).join(", ")}`
     );
   }
 
@@ -92,7 +94,11 @@ export function CalendarWatchoutsSection({ summary, byDay }: CalendarWatchoutsSe
       </div>
       <div className="rounded-xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft">
         <p className="text-foreground/90 text-sm">
-          {summary.narrative ? summary.narrative : summaryParts.length > 0 ? summaryParts.join(" · ") : "No watchouts"}
+          {summary.narrative
+            ? summary.narrative
+            : summaryParts.length > 0
+              ? `Review calendar flow: ${summaryParts.join(" · ")}`
+              : "Your calendar has no obvious prep needs right now."}
         </p>
         {summary.narrative && summaryParts.length > 0 && (
           <p className="text-muted-foreground text-xs mt-1">{summaryParts.join(" · ")}</p>
@@ -105,6 +111,7 @@ export function CalendarWatchoutsSection({ summary, byDay }: CalendarWatchoutsSe
                 <li key={e.id} className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span>
                     {new Date(e.startAt).toLocaleTimeString(undefined, {
+                      timeZone,
                       hour: "numeric",
                       minute: "2-digit",
                     })}
@@ -132,7 +139,7 @@ export function CalendarWatchoutsSection({ summary, byDay }: CalendarWatchoutsSe
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([day, events]) => (
               <div key={day} className="rounded-xl border border-border/10 bg-surface/40 px-3 py-2">
-                <div className="text-sm font-medium text-muted-foreground">{fmtDate(day)}</div>
+                <div className="text-sm font-medium text-muted-foreground">{fmtDate(day, localTodayKey)}</div>
                 <ul className="mt-1 space-y-1">
                   {events.slice(0, 5).map((e) => (
                     <li key={e.id} className="text-muted-foreground text-sm flex items-start justify-between gap-3">
@@ -140,6 +147,7 @@ export function CalendarWatchoutsSection({ summary, byDay }: CalendarWatchoutsSe
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <span className="shrink-0">
                         {new Date(e.startAt).toLocaleTimeString(undefined, {
+                          timeZone,
                           hour: "numeric",
                           minute: "2-digit",
                         })}

@@ -63,13 +63,13 @@ export function TodayAtGlance({
   const totalUnread = inboxAccounts.reduce((s, a) => s + a.messagesUnread, 0);
   const cw = calendarWatchouts;
   const watchouts = [
-    cw.overloadedDays > 0 && `Overloaded: ${cw.overloadedDays}`,
-    cw.earlyStarts > 0 && `Early: ${cw.earlyStarts}`,
-    cw.backToBackChains > 0 && `Back-to-back: ${cw.backToBackChains}`,
+    cw.overloadedDays > 0 && `${cw.overloadedDays} packed day${cw.overloadedDays === 1 ? "" : "s"} to plan around`,
+    cw.earlyStarts > 0 && `${cw.earlyStarts} early start${cw.earlyStarts === 1 ? "" : "s"} to prepare for`,
+    cw.backToBackChains > 0 && `${cw.backToBackChains} tight handoff${cw.backToBackChains === 1 ? "" : "s"}`,
   ]
     .filter(Boolean)
     .join(" · ");
-  const calendarLine = calendarNarrative?.trim() || watchouts || "Looks clear.";
+  const calendarLine = calendarNarrative?.trim() || watchouts || "No obvious prep needs.";
 
   return (
     <div
@@ -127,7 +127,7 @@ export function TodayAtGlance({
       >
         <div className="text-sm font-medium text-foreground">Calendar</div>
         <div className="text-muted-foreground text-sm mt-1">
-          {nextMeeting ? `Next: ${inMinutes(nextMeeting.inMinutes)}.` : "No upcoming meetings."}
+          {nextMeeting ? `Next commitment ${inMinutes(nextMeeting.inMinutes)}.` : "No upcoming meetings."}
         </div>
         {nextMeeting?.title && (
           <div className="text-xs text-muted-foreground/80 truncate mt-1" title={nextMeeting.title}>

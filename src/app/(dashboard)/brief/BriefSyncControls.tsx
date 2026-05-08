@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-type SyncOutcome = "ok" | "warn" | "reconnect";
+type SyncOutcome = "completed" | "unchanged" | "partial" | "reconnect";
 
 export function BriefSyncControls() {
   const router = useRouter();
@@ -34,7 +34,19 @@ export function BriefSyncControls() {
 
       const reconnectRequired = data.reconnectRequired === true;
       const hasErrors = data.hasErrors === true;
-      setOutcome(reconnectRequired ? "reconnect" : hasErrors ? "warn" : "ok");
+      const summary = data.summary && typeof data.summary === "object"
+        ? (data.summary as Record<string, unknown>)
+        : {};
+      const changed = typeof summary.changed === "number" ? summary.changed : null;
+      setOutcome(
+        reconnectRequired
+          ? "reconnect"
+          : hasErrors
+            ? "partial"
+            : changed === 0
+              ? "unchanged"
+              : "completed"
+      );
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sync failed. Please try again.");
@@ -55,6 +67,14 @@ export function BriefSyncControls() {
         {syncing ? "Syncing…" : "Sync now"}
       </button>
 
+      {outcome === "completed" && (
+        <span className="text-sm text-muted-foreground">Brief refreshed just now.</span>
+      )}
+      {outcome === "unchanged" && (
+        <span className="text-sm text-muted-foreground">
+          No new Gmail or Calendar items were imported, but your workspace was refreshed.
+        </span>
+      )}
       {outcome === "reconnect" && (
         <Link
           href="/settings/accounts"
@@ -63,12 +83,12 @@ export function BriefSyncControls() {
           Reconnect needed
         </Link>
       )}
-      {outcome === "warn" && (
+      {outcome === "partial" && (
         <Link
           href="/settings/accounts"
           className="text-sm text-muted-foreground hover:text-foreground"
         >
-          Sync had issues
+          Sync partially completed
         </Link>
       )}
       {error && (

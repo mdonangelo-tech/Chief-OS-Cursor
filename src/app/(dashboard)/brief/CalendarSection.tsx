@@ -48,7 +48,9 @@ export function CalendarSection({ events }: CalendarSectionProps) {
   if (overloadedCount > 0) {
     summaryParts.push(`${overloadedCount} busy day(s)`);
   }
-  const summary = summaryParts.length > 0 ? summaryParts.join(" · ") : "No watchouts";
+  const summary = summaryParts.length > 0
+    ? `Review calendar flow: ${summaryParts.join(" · ")}`
+    : "Your calendar has no obvious prep needs right now.";
 
   return (
     <section className="space-y-3">

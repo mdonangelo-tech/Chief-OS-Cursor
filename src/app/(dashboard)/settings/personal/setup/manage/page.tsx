@@ -28,9 +28,9 @@ export default async function PersonalSetupManagePage() {
       </div>
 
       <div>
-        <h1 className="text-2xl font-semibold">Workspace refresh</h1>
+        <h1 className="text-2xl font-semibold">Personalization refresh</h1>
         <p className="text-muted-foreground mt-1">
-          Refresh insights and recommendations, or include newly connected accounts.
+          Rerun setup when goals, accounts, or preferences change.
         </p>
       </div>
 

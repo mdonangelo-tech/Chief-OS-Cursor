@@ -120,6 +120,8 @@ export function BriefContentClient({ payload }: { payload: BriefPayload }) {
       <CalendarWatchoutsSection
         summary={payload.calendarWatchouts.summary}
         byDay={calendarByDay}
+        localTodayKey={payload.calendarWatchouts.localTodayKey}
+        timeZone={payload.calendarWatchouts.timeZone}
       />
     </div>
   );

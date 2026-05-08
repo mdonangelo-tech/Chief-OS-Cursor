@@ -20,8 +20,8 @@ const PRIMARY: NavItem[] = [
 const SETTINGS: NavItem[] = [
   {
     href: "/settings",
-    label: "Settings",
-    isActive: (p) => p === "/settings" || p.startsWith("/settings/"),
+    label: "Overview",
+    isActive: (p) => p === "/settings",
   },
   {
     href: "/settings/personal",
@@ -35,7 +35,7 @@ const SETTINGS: NavItem[] = [
   },
   {
     href: "/settings/workspace-sync",
-    label: "Workspace & Sync",
+    label: "Brief Freshness",
     isActive: (p) => p === "/settings/workspace-sync" || p.startsWith("/settings/workspace-sync/"),
   },
   {

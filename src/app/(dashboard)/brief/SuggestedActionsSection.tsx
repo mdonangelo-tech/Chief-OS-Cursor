@@ -11,10 +11,18 @@ type SuggestedAction = {
   band: "high" | "mid";
   recommendedRuleType: "domain" | "sender";
   recommendedValue: string;
+  email: string | null;
+  domain: string | null;
+  needsSender: boolean;
+  needsDomain: boolean;
 };
 
 function labelForRuleType(t: "domain" | "sender"): string {
   return t === "domain" ? "domain rule" : "sender rule";
+}
+
+function valueForRuleType(action: SuggestedAction, t: "domain" | "sender"): string | null {
+  return t === "domain" ? action.domain : action.email;
 }
 
 export function SuggestedActionsSection({ actions }: { actions: SuggestedAction[] }) {
@@ -25,7 +33,7 @@ export function SuggestedActionsSection({ actions }: { actions: SuggestedAction[
     <section id="suggested-actions" className="scroll-mt-6">
       <div className="flex items-baseline justify-between gap-4 mb-3">
         <h2 className="text-lg font-medium text-foreground">Suggested actions</h2>
-        <span className="text-xs text-muted-foreground">Quick wins to improve future Briefs</span>
+        <span className="text-xs text-muted-foreground">Review, adjust, and ChiefOS will adapt</span>
       </div>
 
       <ul className="space-y-3">
@@ -37,7 +45,7 @@ export function SuggestedActionsSection({ actions }: { actions: SuggestedAction[
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-sm text-muted-foreground">
-                  Save a {labelForRuleType(a.recommendedRuleType)} for{" "}
+                  ChiefOS recommends a {labelForRuleType(a.recommendedRuleType)} for{" "}
                   <span className="text-foreground/90">{a.recommendedValue}</span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground/80">
@@ -54,27 +62,39 @@ export function SuggestedActionsSection({ actions }: { actions: SuggestedAction[
                     {a.snippet}
                   </div>
                 )}
+                <div className="text-xs text-muted-foreground/70 mt-2">
+                  Why: recent mail from this source consistently matched{" "}
+                  <span className="text-foreground/80">{a.categoryName}</span>.
+                </div>
                 <div className="text-xs text-muted-foreground/70 mt-2 truncate" title={a.from}>
                   {a.from}
                 </div>
               </div>
 
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <form action={saveAsRule}>
-                  <input type="hidden" name="emailEventId" value={a.emailEventId} />
-                  <input type="hidden" name="categoryId" value={a.categoryId} />
-                  <input
-                    type="hidden"
-                    name="ruleType"
-                    value={a.recommendedRuleType === "domain" ? "domain" : "sender"}
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90"
-                  >
-                    Save rule
-                  </button>
-                </form>
+                {(["domain", "sender"] as const)
+                  .filter((ruleType) => {
+                    if (ruleType === "domain") return a.needsDomain && valueForRuleType(a, ruleType);
+                    return a.needsSender && valueForRuleType(a, ruleType);
+                  })
+                  .sort((ruleType) => (ruleType === a.recommendedRuleType ? -1 : 1))
+                  .map((ruleType, index) => (
+                    <form key={ruleType} action={saveAsRule}>
+                      <input type="hidden" name="emailEventId" value={a.emailEventId} />
+                      <input type="hidden" name="categoryId" value={a.categoryId} />
+                      <input type="hidden" name="ruleType" value={ruleType} />
+                      <button
+                        type="submit"
+                        className={
+                          index === 0
+                            ? "rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90"
+                            : "rounded-xl border border-border/10 bg-surface/50 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface2/60"
+                        }
+                      >
+                        {ruleType === a.recommendedRuleType ? "Save recommended" : `Use ${labelForRuleType(ruleType)}`}
+                      </button>
+                    </form>
+                  ))}
 
                 <form action={acceptSuggestion}>
                   <input type="hidden" name="emailEventId" value={a.emailEventId} />
@@ -83,7 +103,7 @@ export function SuggestedActionsSection({ actions }: { actions: SuggestedAction[
                     type="submit"
                     className="text-sm text-muted-foreground hover:text-foreground"
                   >
-                    Not now
+                    Dismiss suggestion
                   </button>
                 </form>
               </div>
