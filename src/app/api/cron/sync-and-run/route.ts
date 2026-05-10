@@ -4,6 +4,7 @@ import { withApiGuard } from "@/lib/api/api-guard";
 import { asDbErrorInfo } from "@/lib/db-errors";
 import { syncGmailForUser } from "@/services/gmail/sync";
 import { syncCalendarForUser } from "@/services/calendar/sync";
+import { enrichUpcomingCalendarEvents } from "@/services/classification/calendar";
 import { runAutoArchiveBatch } from "@/services/declutter/run-auto-archive-batch";
 
 export const dynamic = "force-dynamic";
@@ -69,6 +70,7 @@ export const GET = withApiGuard(async (req: NextRequest) => {
 
     try {
       const calendar = await syncCalendarForUser(userId);
+      await enrichUpcomingCalendarEvents(userId);
       totalCalendarAccounts += calendar.length;
       row.calendar = {
         accounts: calendar.length,

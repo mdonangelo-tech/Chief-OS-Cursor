@@ -154,5 +154,29 @@ test("Default fallback works (Other)", () => {
   assert.equal(res.action, "NONE");
 });
 
+test("Stored non-LLM classification can drive category policy", () => {
+  const categoriesById = {
+    cat_digest: { id: "cat_digest", name: "Promotions", protectedFromAutoArchive: false },
+  };
+
+  const res = decideEmail(
+    makeEmailEvent({
+      classificationCategoryId: "cat_digest",
+      explainJson: { source: "manual", reason: "User categorized" },
+      date: new Date("2026-02-09T12:00:00.000Z"),
+    }),
+    makeCtx({
+      categoriesById,
+      categoryPoliciesById: { cat_digest: { action: "archive_after_48h" } },
+      llmEnabled: false,
+    })
+  );
+
+  assert.equal(res.reason.winner, "classification");
+  assert.equal(res.finalCategoryId, "cat_digest");
+  assert.equal(res.action, "ARCHIVE_AT");
+  assert.equal(res.archiveAt, "2026-02-11T12:00:00.000Z");
+});
+
 
 

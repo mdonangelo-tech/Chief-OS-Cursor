@@ -14,6 +14,7 @@ type ScanRow = {
   id: string;
   googleAccountId: string;
   threadId: string;
+  messageId: string;
   date: Date;
   from_: string;
   senderDomain: string | null;
@@ -62,6 +63,14 @@ export async function runAutoArchiveBatch(
   const maxPerCall = opts?.maxPerCall ?? DEFAULT_MAX_PER_CALL;
   const runId = randomUUID();
 
+  const pref = await prisma.userDeclutterPref.findUnique({
+    where: { userId },
+    select: { autoArchiveEnabled: true },
+  });
+  if (!pref?.autoArchiveEnabled) {
+    return { ok: true, runId, processed: 0, remainingEligible: 0 };
+  }
+
   const accounts = await prisma.googleAccount.findMany({
     where: { userId },
     select: { id: true },
@@ -89,72 +98,97 @@ export async function runAutoArchiveBatch(
       .filter(Boolean) as string[]
   );
 
-  const candidates = await prisma.emailEvent.findMany({
-    where: {
-      googleAccountId: { in: accountIds },
-      labels: { has: "INBOX" },
-      NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
-      messageId: { notIn: Array.from(alreadyArchived) },
-    },
-    select: {
-      id: true,
-      googleAccountId: true,
-      threadId: true,
-      messageId: true,
-      date: true,
-      labels: true,
-      senderDomain: true,
-      from_: true,
-      classificationCategoryId: true,
-      confidence: true,
-      explainJson: true,
-    },
-    // Prefer newest eligible first so a large backlog doesn't make it look "stuck" on old mail.
-    orderBy: { date: "desc" },
-    take: 2000,
-  });
-
-  const threadIds = Array.from(new Set(candidates.map((c) => c.threadId)));
-  const threadMaxRows = await prisma.emailEvent.groupBy({
-    by: ["googleAccountId", "threadId"],
-    where: {
-      googleAccountId: { in: accountIds },
-      threadId: { in: threadIds },
-      labels: { has: "INBOX" },
-      NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
-    },
-    _max: { date: true },
-  });
-  const threadMaxByKey = new Map<string, Date>();
-  for (const r of threadMaxRows) {
-    if (r._max.date) threadMaxByKey.set(`${r.googleAccountId}:${r.threadId}`, r._max.date);
-  }
-
   const eligible: Array<{
-    e: (typeof candidates)[number];
+    e: ScanRow;
     decision: ReturnType<typeof decideEmail>;
   }> = [];
-  for (const e of candidates) {
-    const effectiveDate =
-      threadMaxByKey.get(`${e.googleAccountId}:${e.threadId}`) ?? e.date;
-    const decision = decideEmail(
-      {
-        id: e.id,
-        googleAccountId: e.googleAccountId,
-        date: effectiveDate,
-        from_: e.from_,
-        senderDomain: e.senderDomain,
-        classificationCategoryId: e.classificationCategoryId,
-        confidence: e.confidence,
-        explainJson: e.explainJson,
+  let minEligibleDays: number | null = null;
+  for (const p of Object.values(ctx.categoryPoliciesById)) {
+    if (!p) continue;
+    const a = normalizePolicyAction(p.action);
+    if (a === "archive_after_48h") {
+      minEligibleDays = minEligibleDays == null ? 2 : Math.min(minEligibleDays, 2);
+    } else if (a === "archive_after_days" || a === "archive_after_n_days") {
+      const n = p.archiveAfterDays;
+      if (typeof n === "number" && Number.isFinite(n) && n > 0) {
+        minEligibleDays = minEligibleDays == null ? n : Math.min(minEligibleDays, n);
+      }
+    }
+  }
+  const cutoff =
+    minEligibleDays != null
+      ? new Date(now.getTime() - minEligibleDays * 24 * 60 * 60 * 1000)
+      : null;
+
+  let scanned = 0;
+  let cursorId: string | null = null;
+  while (scanned < MAX_SCAN && eligible.length < maxPerCall) {
+    const page: ScanRow[] = await prisma.emailEvent.findMany({
+      where: {
+        googleAccountId: { in: accountIds },
+        labels: { has: "INBOX" },
+        NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
+        messageId: { notIn: Array.from(alreadyArchived) },
+        ...(cutoff ? { date: { lte: cutoff } } : {}),
       },
-      ctx
-    );
-    if (decision.action !== "ARCHIVE_AT" && decision.action !== "SPAM") continue;
-    if (!decision.archiveAt) continue;
-    if (new Date(decision.archiveAt).getTime() > now.getTime()) continue;
-    eligible.push({ e, decision });
-    if (eligible.length >= maxPerCall) break;
+      select: {
+        id: true,
+        googleAccountId: true,
+        threadId: true,
+        messageId: true,
+        date: true,
+        senderDomain: true,
+        from_: true,
+        classificationCategoryId: true,
+        confidence: true,
+        explainJson: true,
+      },
+      orderBy: { id: "asc" },
+      take: PAGE_SIZE,
+      ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+    });
+    if (page.length === 0) break;
+    cursorId = page[page.length - 1].id;
+
+    const threadIds = Array.from(new Set(page.map((c) => c.threadId)));
+    const threadMaxRows = await prisma.emailEvent.groupBy({
+      by: ["googleAccountId", "threadId"],
+      where: {
+        googleAccountId: { in: accountIds },
+        threadId: { in: threadIds },
+        labels: { has: "INBOX" },
+        NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
+      },
+      _max: { date: true },
+    });
+    const threadMaxByKey = new Map<string, Date>();
+    for (const r of threadMaxRows) {
+      if (r._max.date) threadMaxByKey.set(`${r.googleAccountId}:${r.threadId}`, r._max.date);
+    }
+
+    for (const e of page) {
+      scanned++;
+      const effectiveDate =
+        threadMaxByKey.get(`${e.googleAccountId}:${e.threadId}`) ?? e.date;
+      const decision = decideEmail(
+        {
+          id: e.id,
+          googleAccountId: e.googleAccountId,
+          date: effectiveDate,
+          from_: e.from_,
+          senderDomain: e.senderDomain,
+          classificationCategoryId: e.classificationCategoryId,
+          confidence: e.confidence,
+          explainJson: e.explainJson,
+        },
+        ctx
+      );
+      if (decision.action !== "ARCHIVE_AT" && decision.action !== "SPAM") continue;
+      if (!decision.archiveAt) continue;
+      if (new Date(decision.archiveAt).getTime() > now.getTime()) continue;
+      eligible.push({ e, decision });
+      if (eligible.length >= maxPerCall || scanned >= MAX_SCAN) break;
+    }
   }
 
   let processed = 0;
@@ -189,40 +223,29 @@ export async function runAutoArchiveBatch(
   }
 
   // Re-count eligible after this batch so the UI (and cron) can say what's left.
-  let minEligibleDays: number | null = null;
-  for (const p of Object.values(ctx.categoryPoliciesById)) {
-    if (!p) continue;
-    const a = normalizePolicyAction(p.action);
-    if (a === "archive_after_48h") {
-      minEligibleDays = minEligibleDays == null ? 2 : Math.min(minEligibleDays, 2);
-    } else if (a === "archive_after_days" || a === "archive_after_n_days") {
-      const n = p.archiveAfterDays;
-      if (typeof n === "number" && Number.isFinite(n) && n > 0) {
-        minEligibleDays = minEligibleDays == null ? n : Math.min(minEligibleDays, n);
-      }
-    }
-  }
   const recountNow = new Date();
-  const cutoff =
+  const recountCutoff =
     minEligibleDays != null
       ? new Date(recountNow.getTime() - minEligibleDays * 24 * 60 * 60 * 1000)
       : null;
 
   let remainingEligible = 0;
-  let scanned = 0;
-  let cursorId: string | null = null;
+  scanned = 0;
+  cursorId = null;
   while (scanned < MAX_SCAN) {
     const page: ScanRow[] = await prisma.emailEvent.findMany({
       where: {
         googleAccountId: { in: accountIds },
         labels: { has: "INBOX" },
         NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
-        ...(cutoff ? { date: { lte: cutoff } } : {}),
+        messageId: { notIn: Array.from(alreadyArchived) },
+        ...(recountCutoff ? { date: { lte: recountCutoff } } : {}),
       },
       select: {
         id: true,
         googleAccountId: true,
         threadId: true,
+        messageId: true,
         date: true,
         from_: true,
         senderDomain: true,

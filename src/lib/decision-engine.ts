@@ -7,7 +7,7 @@ export interface DecisionResult {
   action: DecisionAction;
   archiveAt: string | null;
   reason: {
-    winner: "personRule" | "domainRule" | "llm" | "default";
+    winner: "personRule" | "domainRule" | "llm" | "classification" | "default";
     candidates: Array<{
       source: string;
       categoryId: string;
@@ -66,6 +66,10 @@ function isExplainJsonFromLlm(explainJson: unknown): boolean {
   if (!explainJson || typeof explainJson !== "object") return false;
   const source = (explainJson as { source?: unknown }).source;
   return source === "llm";
+}
+
+function classificationSource(explainJson: unknown): "llm" | "classification" {
+  return isExplainJsonFromLlm(explainJson) ? "llm" : "classification";
 }
 
 function findDefaultOtherCategoryId(categoriesById: Record<string, MinimalCategory>): string | null {
@@ -150,11 +154,11 @@ export function decideEmail(
       ? ctx.orgRules.find((r) => r.domain.toLowerCase() === domain)
       : undefined;
 
-  const llmCandidateCategoryId =
-    ctx.llmEnabled &&
-    isExplainJsonFromLlm(emailEvent.explainJson) &&
+  const storedClassificationSource = classificationSource(emailEvent.explainJson);
+  const storedClassificationCategoryId =
     typeof emailEvent.classificationCategoryId === "string" &&
-    emailEvent.classificationCategoryId.length > 0
+    emailEvent.classificationCategoryId.length > 0 &&
+    (storedClassificationSource !== "llm" || ctx.llmEnabled)
       ? emailEvent.classificationCategoryId
       : null;
 
@@ -164,11 +168,11 @@ export function decideEmail(
   if (domainMatch) {
     candidates.push({ source: "domainRule", categoryId: domainMatch.categoryId, confidence: 1 });
   }
-  if (llmCandidateCategoryId) {
+  if (storedClassificationCategoryId) {
     const conf = emailEvent.confidence ?? undefined;
     candidates.push({
-      source: "llm",
-      categoryId: llmCandidateCategoryId,
+      source: storedClassificationSource,
+      categoryId: storedClassificationCategoryId,
       ...(typeof conf === "number" ? { confidence: conf } : {}),
     });
   }
@@ -192,24 +196,24 @@ export function decideEmail(
         reason: "PersonRule takes precedence over OrgRule.",
       });
     }
-    if (llmCandidateCategoryId) {
+    if (storedClassificationCategoryId) {
       overrides.push({
-        overriddenSource: "llm",
-        reason: "PersonRule takes precedence over LLM classification.",
+        overriddenSource: storedClassificationSource,
+        reason: "PersonRule takes precedence over stored classification.",
       });
     }
   } else if (isValidCategoryId(domainCategoryId)) {
     winner = "domainRule";
     finalCategoryId = domainCategoryId;
-    if (llmCandidateCategoryId) {
+    if (storedClassificationCategoryId) {
       overrides.push({
-        overriddenSource: "llm",
-        reason: "OrgRule (domain) takes precedence over LLM classification.",
+        overriddenSource: storedClassificationSource,
+        reason: "OrgRule (domain) takes precedence over stored classification.",
       });
     }
-  } else if (isValidCategoryId(llmCandidateCategoryId)) {
-    winner = "llm";
-    finalCategoryId = llmCandidateCategoryId;
+  } else if (isValidCategoryId(storedClassificationCategoryId)) {
+    winner = storedClassificationSource;
+    finalCategoryId = storedClassificationCategoryId;
   } else {
     const otherId = findDefaultOtherCategoryId(ctx.categoriesById);
     if (isValidCategoryId(otherId)) {

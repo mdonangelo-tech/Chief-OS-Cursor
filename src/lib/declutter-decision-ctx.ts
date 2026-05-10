@@ -48,7 +48,9 @@ export async function buildDeclutterDecisionCtx(userId: string, now: Date) {
     categoriesById,
     categoryPoliciesById,
     now,
-    llmEnabled: false,
+    // This only allows already-stored classifications to drive category policies;
+    // it does not call an LLM during auto-archive.
+    llmEnabled: true,
   } as const;
 }
 
