@@ -98,7 +98,11 @@ export async function saveAsRule(formData: FormData) {
   });
   revalidatePath("/brief");
   revalidatePath("/settings/declutter");
-  redirect("/brief");
+  const returnTo = safeReturnTo(formData, "/brief#suggested-actions");
+  const noRedirect = formData.get("noRedirect") === "true";
+  if (!noRedirect) {
+    redirect(returnTo);
+  }
 }
 
 /** Undo an entire auto-archive run. */
@@ -153,7 +157,10 @@ export async function acceptSuggestion(formData: FormData) {
   }
   revalidatePath("/brief");
   revalidatePath("/settings/declutter");
-  redirect(returnTo);
+  const noRedirect = formData.get("noRedirect") === "true";
+  if (!noRedirect) {
+    redirect(returnTo);
+  }
 }
 
 /** Reject suggestion: don't suggest this sender/domain again, revert classification. */
@@ -218,7 +225,10 @@ export async function rejectSuggestion(formData: FormData) {
   });
   revalidatePath("/brief");
   revalidatePath("/settings/declutter");
-  redirect(returnTo);
+  const noRedirect = formData.get("noRedirect") === "true";
+  if (!noRedirect) {
+    redirect(returnTo);
+  }
 }
 
 /** Approve suggested rule: creates sender or domain rule from email event. */
@@ -303,12 +313,12 @@ export async function approveRule(formData: FormData) {
   });
 
   const noRedirect = formData.get("noRedirect") === "true";
+  revalidatePath("/brief");
+  revalidatePath("/settings/declutter");
   if (!noRedirect) {
-    revalidatePath("/brief");
-    revalidatePath("/settings/declutter");
-    redirect("/settings/declutter#suggested-actions");
+    const returnTo = safeReturnTo(formData, "/settings/declutter#suggested-actions");
+    redirect(returnTo);
   }
-  // When noRedirect: don't revalidate — keeps the suggestion row visible so the button can show "Saved"
 }
 
 /** Update category on an existing person or org rule. */

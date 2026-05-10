@@ -6,7 +6,7 @@ import { asDbErrorInfo } from "@/lib/db-errors";
 import { listUserLabels, type GmailLabelInfo } from "@/services/gmail/labels";
 import { AutoArchiveToggle } from "./AutoArchiveToggle";
 import { CategoryRuleRow } from "./CategoryRuleRow";
-import { RuleSuggestionCard } from "@/components/rules/RuleSuggestionCard";
+import { DeclutterSuggestionsList } from "./DeclutterSuggestionsList";
 import { RuleRow } from "../../rules/RuleRow";
 import Link from "next/link";
 import { buildRuleSuggestions } from "@/services/declutter/suggestions";
@@ -310,16 +310,7 @@ export default async function DeclutterPage({
                 {suggestions.length} to review
               </span>
             </div>
-            <ul className="space-y-3">
-              {suggestions.map((s) => (
-                <RuleSuggestionCard
-                  key={s.emailEventId}
-                  mode="declutter"
-                  suggestion={s}
-                  categories={categories}
-                />
-              ))}
-            </ul>
+            <DeclutterSuggestionsList suggestions={suggestions} categories={categories} />
           </>
         ) : (
           <div className="rounded-2xl border border-border/10 bg-surface/50 px-6 py-8 text-center shadow-soft">

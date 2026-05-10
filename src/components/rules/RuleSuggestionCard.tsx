@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { saveAsRule, acceptSuggestion, approveRule, rejectSuggestion } from "@/lib/brief-actions";
+import { useSWRConfig } from "swr";
+import {
+  saveAsRule,
+  acceptSuggestion,
+  approveRule,
+  rejectSuggestion,
+} from "@/lib/brief-actions";
 import { UnsubscribeButton } from "@/app/(dashboard)/brief/UnsubscribeButton";
+import { Button } from "@/components/ui/Button";
 import type { RuleSuggestion } from "@/services/declutter/suggestions";
 
 export interface RuleSuggestionCategoryOption {
@@ -12,6 +19,9 @@ export interface RuleSuggestionCategoryOption {
   parentId: string | null;
   parent?: { name: string } | null;
 }
+
+const BRIEF_RETURN = "/brief#suggested-actions";
+const DEFAULT_DECLUTTER_RETURN = "/settings/declutter#suggested-actions";
 
 function labelForRuleType(t: "domain" | "sender"): string {
   return t === "domain" ? "domain rule" : "sender rule";
@@ -39,115 +49,240 @@ function decodeSnippet(s: string): string {
     .replace(/&quot;/g, '"');
 }
 
+function useUnsubscribeProbe(emailEventId: string): "loading" | "yes" | "no" | "error" {
+  const [state, setState] = useState<"loading" | "yes" | "no" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    setState("loading");
+    fetch(`/api/gmail/unsubscribe?emailEventId=${encodeURIComponent(emailEventId)}`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error("probe failed");
+        return r.json() as Promise<{ hasUnsubscribe?: boolean }>;
+      })
+      .then((d) => {
+        if (!cancelled) setState(d.hasUnsubscribe ? "yes" : "no");
+      })
+      .catch(() => {
+        if (!cancelled) setState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [emailEventId]);
+
+  return state;
+}
+
+function anchorSuggestedActions() {
+  requestAnimationFrame(() => {
+    document.getElementById("suggested-actions")?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+    });
+  });
+}
+
+function preserveBriefSuggestedHash() {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname === "/brief") {
+    window.history.replaceState(null, "", BRIEF_RETURN);
+  }
+}
+
 export type RuleSuggestionCardMode = "brief" | "declutter";
 
 export interface RuleSuggestionCardProps {
   mode: RuleSuggestionCardMode;
   suggestion: RuleSuggestion;
-  /** Declutter: full category tree for rule target. */
   categories?: RuleSuggestionCategoryOption[];
-  /** Brief: fragment for return after dismiss. */
-  briefReturnHash?: string;
+  /** Declutter: return path for any legacy redirect (inline flow uses noRedirect). */
+  declutterReturn?: string;
+  /** Declutter: remove row / clear local list after dismiss or reject (not after rule save). */
+  onCleared?: () => void;
+  /** Brief / Declutter: success copy above the list so it survives row removal. */
+  onFlashMessage?: (message: string) => void;
 }
 
 export function RuleSuggestionCard({
   mode,
   suggestion: s,
   categories = [],
-  briefReturnHash = "#suggested-actions",
+  declutterReturn = DEFAULT_DECLUTTER_RETURN,
+  onCleared,
+  onFlashMessage,
 }: RuleSuggestionCardProps) {
   if (mode === "brief") {
-    return (
-      <li className="rounded-2xl border border-border/10 bg-surface/60 p-4 shadow-soft">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="text-sm text-muted-foreground">
-              Recommended:{" "}
-              <span className="font-medium text-foreground/90">
-                {labelForRuleType(s.recommendedRuleType)}
-              </span>{" "}
-              for <span className="text-foreground/90">{s.recommendedValue}</span>
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground/80">
-              <span className="inline-flex rounded bg-accent/15 px-1.5 py-0.5 text-accent">
-                {s.categoryName}
-              </span>
-              {s.confidence != null && (
-                <span className="tabular-nums">{Math.round(s.confidence * 100)}%</span>
-              )}
-              <span className="rounded bg-muted px-1.5 py-0.5">
-                {s.band === "high" ? "High confidence" : "Medium confidence"}
-              </span>
-            </div>
-            {s.snippet && (
-              <div className="text-sm text-muted-foreground mt-2 line-clamp-2">{s.snippet}</div>
-            )}
-            <div className="text-xs text-muted-foreground/70 mt-2">
-              Why: recent mail from this source consistently matched{" "}
-              <span className="text-foreground/80">{s.categoryName}</span>
-              {s.recommendedRuleType === "domain"
-                ? " — a domain rule covers everyone at that address."
-                : " — a sender rule targets this exact address."}
-            </div>
-            <div className="text-xs text-muted-foreground/70 mt-2 truncate" title={s.from}>
-              {s.from}
-            </div>
-          </div>
-
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            {(["domain", "sender"] as const)
-              .filter((ruleType) => {
-                if (ruleType === "domain") return s.needsDomain && valueForRuleType(s, ruleType);
-                return s.needsSender && valueForRuleType(s, ruleType);
-              })
-              .sort((ruleType) => (ruleType === s.recommendedRuleType ? -1 : 1))
-              .map((ruleType, index) => (
-                <form key={ruleType} action={saveAsRule}>
-                  <input type="hidden" name="emailEventId" value={s.emailEventId} />
-                  <input type="hidden" name="categoryId" value={s.categoryId} />
-                  <input type="hidden" name="ruleType" value={ruleType} />
-                  <button
-                    type="submit"
-                    className={
-                      index === 0
-                        ? "rounded-xl bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:opacity-90"
-                        : "rounded-xl border border-border/10 bg-surface/50 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface2/60"
-                    }
-                  >
-                    {ruleType === s.recommendedRuleType
-                      ? `Save recommended (${labelForRuleType(ruleType)})`
-                      : `Alternative: ${labelForRuleType(ruleType)}`}
-                  </button>
-                </form>
-              ))}
-
-            <form action={acceptSuggestion}>
-              <input type="hidden" name="emailEventId" value={s.emailEventId} />
-              <input type="hidden" name="returnTo" value={`/brief${briefReturnHash}`} />
-              <button
-                type="submit"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Dismiss suggestion
-              </button>
-            </form>
-          </div>
-        </div>
-      </li>
-    );
+    return <BriefSuggestionBody suggestion={s} onFlashMessage={onFlashMessage} />;
   }
+  return (
+    <DeclutterSuggestionBody
+      suggestion={s}
+      categories={categories}
+      declutterReturn={declutterReturn}
+      onCleared={onCleared}
+      onFlashMessage={onFlashMessage}
+    />
+  );
+}
 
-  // declutter
-  return <DeclutterSuggestionBody suggestion={s} categories={categories} />;
+function BriefSuggestionBody({
+  suggestion: s,
+  onFlashMessage,
+}: {
+  suggestion: RuleSuggestion;
+  onFlashMessage?: (message: string) => void;
+}) {
+  const { mutate } = useSWRConfig();
+  const [pending, startTransition] = useTransition();
+  const unsub = useUnsubscribeProbe(s.emailEventId);
+
+  const showUnsub = unsub === "yes";
+  const showUnsubHint =
+    unsub === "no" &&
+    ["newsletters", "promotions", "low-priority"].some((k) =>
+      (s.categoryName ?? "").toLowerCase().includes(k)
+    );
+
+  const runInline = useCallback(
+    (fn: (fd: FormData) => Promise<void>, build: (fd: FormData) => void, message: string) => {
+      startTransition(async () => {
+        const fd = new FormData();
+        build(fd);
+        fd.set("noRedirect", "true");
+        fd.set("returnTo", BRIEF_RETURN);
+        await fn(fd);
+        onFlashMessage?.(message);
+        await mutate("/api/brief");
+        preserveBriefSuggestedHash();
+        anchorSuggestedActions();
+      });
+    },
+    [mutate, onFlashMessage]
+  );
+
+  const saveRule = (ruleType: "domain" | "sender") => {
+    runInline(saveAsRule, (fd) => {
+      fd.set("emailEventId", s.emailEventId);
+      fd.set("categoryId", s.categoryId);
+      fd.set("ruleType", ruleType);
+    }, `${labelForRuleType(ruleType)} saved. Future mail will be classified with your categories.`);
+  };
+
+  const dismiss = () => {
+    runInline(
+      acceptSuggestion,
+      (fd) => {
+        fd.set("emailEventId", s.emailEventId);
+      },
+      "Got it — we will not suggest this again for now."
+    );
+  };
+
+  return (
+    <li className="rounded-2xl border border-border/10 bg-surface/60 p-4 shadow-soft">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm text-muted-foreground">
+            Recommended:{" "}
+            <span className="font-medium text-foreground/90">
+              {labelForRuleType(s.recommendedRuleType)}
+            </span>{" "}
+            for <span className="text-foreground/90">{s.recommendedValue}</span>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground/80">
+            <span className="inline-flex rounded bg-accent/15 px-1.5 py-0.5 text-accent">
+              {s.categoryName}
+            </span>
+            {s.confidence != null && (
+              <span className="tabular-nums">{Math.round(s.confidence * 100)}%</span>
+            )}
+            <span className="rounded bg-muted px-1.5 py-0.5">
+              {s.band === "high" ? "High confidence" : "Medium confidence"}
+            </span>
+          </div>
+          {s.snippet && (
+            <div className="text-sm text-muted-foreground mt-2 line-clamp-2">{s.snippet}</div>
+          )}
+          <div className="text-xs text-muted-foreground/80 mt-2 space-y-1">
+            <p>
+              <span className="text-foreground/90">Rules</span> tell ChiefOS how to{" "}
+              <em>label or archive future mail</em> from this sender or domain. They do not remove
+              you from marketing lists.
+            </p>
+            {showUnsub && (
+              <p>
+                <span className="text-foreground/90">Unsubscribe</span> asks the sender (or opens
+                their page) to <em>stop sending</em>; it does not replace classification rules.
+              </p>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground/70 mt-2 truncate" title={s.from}>
+            {s.from}
+          </div>
+          {showUnsubHint && (
+            <p className="text-xs text-muted-foreground/70 mt-2">
+              This message has no safe List-Unsubscribe link in headers. Use a rule below, or open
+              the message in Gmail to unsubscribe manually.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col items-stretch sm:items-end gap-2 shrink-0 min-w-[200px]">
+          {(["domain", "sender"] as const)
+            .filter((ruleType) => {
+              if (ruleType === "domain") return s.needsDomain && valueForRuleType(s, ruleType);
+              return s.needsSender && valueForRuleType(s, ruleType);
+            })
+            .sort((ruleType) => (ruleType === s.recommendedRuleType ? -1 : 1))
+            .map((ruleType, index) => (
+              <Button
+                key={ruleType}
+                variant={index === 0 ? "primary" : "secondary"}
+                type="button"
+                disabled={pending}
+                onClick={() => saveRule(ruleType)}
+                className="w-full sm:w-auto"
+              >
+                {ruleType === s.recommendedRuleType
+                  ? `Save recommended (${labelForRuleType(ruleType)})`
+                  : `Alternative: ${labelForRuleType(ruleType)}`}
+              </Button>
+            ))}
+
+          {showUnsub && (
+            <div className="rounded-xl border border-border/10 bg-surface/40 px-3 py-2 w-full sm:w-auto">
+              <div className="text-xs text-muted-foreground mb-1.5">Unsubscribe (when available)</div>
+              <UnsubscribeButton
+                emailEventId={s.emailEventId}
+                className="rounded-lg border border-border/10 bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-surface2/60 w-full text-center"
+              />
+            </div>
+          )}
+
+          <Button variant="tertiary" type="button" disabled={pending} onClick={dismiss} className="self-end">
+            Not now / dismiss suggestion
+          </Button>
+        </div>
+      </div>
+    </li>
+  );
 }
 
 function DeclutterSuggestionBody({
   suggestion: s,
   categories,
+  declutterReturn,
+  onCleared,
+  onFlashMessage,
 }: {
   suggestion: RuleSuggestion;
   categories: RuleSuggestionCategoryOption[];
+  declutterReturn: string;
+  onCleared?: () => void;
+  onFlashMessage?: (message: string) => void;
 }) {
+  const { mutate } = useSWRConfig();
   const [useNew, setUseNew] = useState(false);
   const [newName, setNewName] = useState("");
   const [newParentId, setNewParentId] = useState("");
@@ -158,6 +293,41 @@ function DeclutterSuggestionBody({
   const roots = categories.filter((c) => !c.parentId);
   const hasSender = s.needsSender;
   const hasDomain = s.needsDomain;
+  const unsub = useUnsubscribeProbe(id);
+  const showUnsub = unsub === "yes";
+  const showUnsubHint =
+    unsub === "no" &&
+    ["newsletters", "promotions", "low-priority"].some((k) =>
+      (s.categoryName ?? "").toLowerCase().includes(k)
+    );
+
+  const anchorDeclutterSection = () => {
+    requestAnimationFrame(() => {
+      document.getElementById("suggested-actions")?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+  };
+
+  const afterRuleSaved = useCallback(
+    (message: string) => {
+      onFlashMessage?.(message);
+      void mutate("/api/brief");
+      anchorDeclutterSection();
+    },
+    [mutate, onFlashMessage]
+  );
+
+  const afterRowRemoved = useCallback(
+    (message: string) => {
+      onFlashMessage?.(message);
+      void mutate("/api/brief");
+      onCleared?.();
+      anchorDeclutterSection();
+    },
+    [mutate, onCleared, onFlashMessage]
+  );
 
   const handleCreateRule = (ruleType: "sender" | "domain") => {
     startTransition(async () => {
@@ -166,9 +336,38 @@ function DeclutterSuggestionBody({
       const fd = new FormData(form);
       fd.set("ruleType", ruleType);
       fd.set("noRedirect", "true");
+      fd.set("returnTo", declutterReturn);
       await approveRule(fd);
       if (ruleType === "sender") setSavedSender(true);
       else setSavedDomain(true);
+      afterRuleSaved(
+        ruleType === "sender"
+          ? "Sender rule saved — still on Declutter."
+          : "Domain rule saved — still on Declutter."
+      );
+    });
+  };
+
+  const handleAccept = () => {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("emailEventId", id);
+      fd.set("returnTo", declutterReturn);
+      fd.set("noRedirect", "true");
+      await acceptSuggestion(fd);
+      afterRowRemoved("Suggestion dismissed — still on Declutter.");
+    });
+  };
+
+  const handleReject = () => {
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set("emailEventId", id);
+      fd.set("ruleType", "both");
+      fd.set("returnTo", declutterReturn);
+      fd.set("noRedirect", "true");
+      await rejectSuggestion(fd);
+      afterRowRemoved("We will not suggest rules for this sender/domain again.");
     });
   };
 
@@ -190,6 +389,16 @@ function DeclutterSuggestionBody({
           <div className="text-xs text-muted-foreground/80 mt-1">
             Why: recent mail from this source consistently matched{" "}
             <span className="text-foreground/80">{s.categoryName}</span>.
+          </div>
+          <div className="text-xs text-muted-foreground/75 mt-2 space-y-1">
+            <p>
+              <span className="text-foreground/85">Rules</span> classify or archive{" "}
+              <em>future</em> mail. <span className="text-foreground/85">Unsubscribe</span> tries to{" "}
+              <em>stop the list</em> (List-Unsubscribe / one-click when present).
+            </p>
+            {showUnsubHint && (
+              <p>No List-Unsubscribe header on this message — use a rule or open in Gmail.</p>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -323,33 +532,24 @@ function DeclutterSuggestionBody({
           </form>
         )}
 
-        {["newsletters", "promotions", "low-priority"].includes(s.categoryName?.toLowerCase() ?? "") && (
-          <UnsubscribeButton emailEventId={id} className="text-xs text-accent hover:text-accent/80" />
+        {showUnsub && (
+          <div className="flex flex-col gap-1 rounded-xl border border-border/10 bg-surface/40 px-2 py-1.5">
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Unsubscribe</span>
+            <UnsubscribeButton
+              emailEventId={id}
+              className="rounded-lg border border-border/10 bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-surface2/60"
+            />
+          </div>
         )}
 
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={() => {
-            startTransition(async () => {
-              const fd = new FormData();
-              fd.set("emailEventId", id);
-              await acceptSuggestion(fd);
-            });
-          }}
-          className="rounded-md bg-emerald-600/80 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-        >
-          {isPending ? "Clearing…" : "✓ Accept"}
-        </button>
+        <Button variant="secondary" type="button" disabled={isPending} onClick={handleAccept}>
+          {isPending ? "…" : "Dismiss / not now"}
+        </Button>
 
         {s.band === "mid" && (hasSender || hasDomain) && (
-          <form action={rejectSuggestion} className="inline">
-            <input type="hidden" name="emailEventId" value={id} />
-            <input type="hidden" name="ruleType" value="both" />
-            <button type="submit" className="text-sm text-muted-foreground hover:text-foreground">
-              Don&apos;t suggest again
-            </button>
-          </form>
+          <Button variant="tertiary" type="button" disabled={isPending} onClick={handleReject}>
+            Don&apos;t suggest again
+          </Button>
         )}
       </div>
       {s.snippet && (
