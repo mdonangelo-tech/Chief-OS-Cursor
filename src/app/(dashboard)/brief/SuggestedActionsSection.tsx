@@ -6,7 +6,8 @@ import { RuleSuggestionCard } from "@/components/rules/RuleSuggestionCard";
 import type { RuleSuggestion } from "@/services/declutter/suggestions";
 
 export function SuggestedActionsSection({ actions }: { actions: RuleSuggestion[] }) {
-  const high = (actions ?? []).filter((a) => a.band === "high");
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(() => new Set());
+  const high = (actions ?? []).filter((a) => a.band === "high" && !hiddenKeys.has(a.suggestionKey));
   const [flash, setFlash] = useState<string | null>(null);
 
   if (high.length === 0) return null;
@@ -30,9 +31,12 @@ export function SuggestedActionsSection({ actions }: { actions: RuleSuggestion[]
       <ul className="space-y-3">
         {high.slice(0, 3).map((a) => (
           <RuleSuggestionCard
-            key={a.emailEventId}
+            key={a.suggestionKey}
             mode="brief"
             suggestion={a}
+            onCleared={() => {
+              setHiddenKeys((prev) => new Set(prev).add(a.suggestionKey));
+            }}
             onFlashMessage={(msg) => {
               setFlash(msg);
               window.setTimeout(() => setFlash(null), 5000);

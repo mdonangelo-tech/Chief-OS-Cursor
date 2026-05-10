@@ -1,19 +1,12 @@
 import { prisma } from "@/lib/prisma";
-
-function extractEmail(fromHeader: string): string | null {
-  const match = fromHeader.match(/<([^>]+)>/);
-  if (match) return match[1].toLowerCase().trim();
-  const trimmed = fromHeader.trim();
-  if (trimmed.includes("@")) return trimmed.toLowerCase();
-  return null;
-}
-
-function extractDomain(fromHeader: string): string | null {
-  const email = extractEmail(fromHeader);
-  if (!email) return null;
-  const parts = email.split("@");
-  return parts.length === 2 ? parts[1].toLowerCase() : null;
-}
+import {
+  canonicalOrgDomain,
+  domainVariants,
+  extractDomainFromEmailOrHeader,
+  extractEmailAddress,
+  normalizeDomain,
+  normalizeEmailAddress,
+} from "@/lib/email/identity";
 
 export type RuleSuggestion = {
   emailEventId: string;
@@ -21,6 +14,8 @@ export type RuleSuggestion = {
   snippet: string | null;
   email: string | null;
   domain: string | null;
+  canonicalDomain: string | null;
+  suggestionKey: string;
   categoryId: string;
   categoryName: string;
   confidence: number | null;
@@ -30,6 +25,68 @@ export type RuleSuggestion = {
   recommendedRuleType: "domain" | "sender";
   recommendedValue: string;
 };
+
+export function buildKnownEmailSet(values: Iterable<string>): Set<string> {
+  const out = new Set<string>();
+  for (const value of values) {
+    const email = normalizeEmailAddress(value);
+    if (email) out.add(email);
+  }
+  return out;
+}
+
+export function buildKnownDomainSet(values: Iterable<string>): Set<string> {
+  const out = new Set<string>();
+  for (const value of values) {
+    for (const domain of domainVariants(value)) {
+      out.add(domain);
+    }
+  }
+  return out;
+}
+
+export function buildRejectedKeySet(values: Iterable<{ type: string; value: string }>): Set<string> {
+  const out = new Set<string>();
+  for (const row of values) {
+    if (row.type === "person") {
+      const email = normalizeEmailAddress(row.value);
+      if (email) out.add(`person:${email}`);
+    } else if (row.type === "domain") {
+      for (const domain of domainVariants(row.value)) {
+        out.add(`domain:${domain}`);
+      }
+    }
+  }
+  return out;
+}
+
+function hasDomainCoverage(domain: string | null, knownDomains: Set<string>, rejectedKeys: Set<string>): boolean {
+  if (!domain) return false;
+  return domainVariants(domain).some(
+    (value) => knownDomains.has(value) || rejectedKeys.has(`domain:${value}`)
+  );
+}
+
+function suggestionKey(args: {
+  recommendedRuleType: "domain" | "sender";
+  recommendedValue: string;
+  categoryId: string;
+  canonicalDomain: string | null;
+}): string {
+  const value =
+    args.recommendedRuleType === "domain" && args.canonicalDomain
+      ? args.canonicalDomain
+      : args.recommendedValue;
+  return `${args.recommendedRuleType}:${value}:${args.categoryId}`;
+}
+
+function compareSuggestions(a: RuleSuggestion, b: RuleSuggestion): number {
+  const band = (b.band === "high" ? 1 : 0) - (a.band === "high" ? 1 : 0);
+  if (band !== 0) return band;
+  const conf = (b.confidence ?? 0) - (a.confidence ?? 0);
+  if (conf !== 0) return conf;
+  return a.suggestionKey.localeCompare(b.suggestionKey);
+}
 
 export function buildRuleSuggestions(args: {
   events: Array<{
@@ -48,7 +105,7 @@ export function buildRuleSuggestions(args: {
   rejectedKeys: Set<string>;
   limit?: number;
 }): RuleSuggestion[] {
-  const suggestions: RuleSuggestion[] = [];
+  const suggestionsByKey = new Map<string, RuleSuggestion>();
   const seen = new Set<string>();
 
   for (const e of args.events) {
@@ -56,13 +113,10 @@ export function buildRuleSuggestions(args: {
     if (seen.has(e.id)) continue;
     seen.add(e.id);
 
-    const email = extractEmail(e.from_);
-    const rawDomain = extractDomain(e.from_) ?? e.senderDomain;
-    const domain =
-      rawDomain != null && String(rawDomain).trim() !== ""
-        ? String(rawDomain).trim().toLowerCase()
-        : null;
-    const domainCoveredByOrgRule = !!domain && args.knownDomains.has(domain);
+    const email = extractEmailAddress(e.from_);
+    const domain = extractDomainFromEmailOrHeader(e.from_) ?? normalizeDomain(e.senderDomain);
+    const canonicalDomain = canonicalOrgDomain(domain);
+    const domainCoveredByOrgRule = hasDomainCoverage(domain, args.knownDomains, args.rejectedKeys);
     // Org/domain rule applies to all senders on that domain — do not suggest a redundant person rule.
     const needsSender =
       !!email &&
@@ -70,7 +124,7 @@ export function buildRuleSuggestions(args: {
       !args.rejectedKeys.has(`person:${email}`) &&
       !domainCoveredByOrgRule;
     const needsDomain =
-      !!domain && !args.knownDomains.has(domain) && !args.rejectedKeys.has(`domain:${domain}`);
+      !!domain && !hasDomainCoverage(domain, args.knownDomains, args.rejectedKeys);
     if (!needsSender && !needsDomain) continue;
 
     const conf =
@@ -84,13 +138,20 @@ export function buildRuleSuggestions(args: {
       recommendedRuleType === "domain"
         ? (domain as string)
         : (email as string);
-
-    suggestions.push({
+    const key = suggestionKey({
+      recommendedRuleType,
+      recommendedValue,
+      categoryId: e.category.id,
+      canonicalDomain,
+    });
+    const suggestion: RuleSuggestion = {
       emailEventId: e.id,
       from: e.from_,
       snippet: e.snippet,
       email,
       domain,
+      canonicalDomain,
+      suggestionKey: key,
       categoryId: e.category.id,
       categoryName: e.category.name,
       confidence: conf,
@@ -99,16 +160,14 @@ export function buildRuleSuggestions(args: {
       needsDomain,
       recommendedRuleType,
       recommendedValue,
-    });
+    };
+    const existing = suggestionsByKey.get(key);
+    if (!existing || compareSuggestions(suggestion, existing) < 0) {
+      suggestionsByKey.set(key, suggestion);
+    }
   }
 
-  suggestions.sort((a, b) => {
-    const band = (b.band === "high" ? 1 : 0) - (a.band === "high" ? 1 : 0);
-    if (band !== 0) return band;
-    const conf = (b.confidence ?? 0) - (a.confidence ?? 0);
-    if (conf !== 0) return conf;
-    return 0;
-  });
+  const suggestions = Array.from(suggestionsByKey.values()).sort(compareSuggestions);
 
   return typeof args.limit === "number" ? suggestions.slice(0, args.limit) : suggestions;
 }
@@ -147,9 +206,9 @@ export async function getRuleSuggestionsForUser(args: {
     }),
   ]);
 
-  const knownEmails = new Set(personRules.map((r) => r.email.toLowerCase()));
-  const knownDomains = new Set(orgRules.map((r) => r.domain.toLowerCase()));
-  const rejectedKeys = new Set(rejected.map((r) => `${r.type}:${r.value}`));
+  const knownEmails = buildKnownEmailSet(personRules.map((r) => r.email));
+  const knownDomains = buildKnownDomainSet(orgRules.map((r) => r.domain));
+  const rejectedKeys = buildRejectedKeySet(rejected);
 
   return buildRuleSuggestions({
     events,

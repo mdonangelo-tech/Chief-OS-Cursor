@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { RuleSuggestionCard, type RuleSuggestionCategoryOption } from "@/components/rules/RuleSuggestionCard";
 import type { RuleSuggestion } from "@/services/declutter/suggestions";
@@ -14,19 +15,21 @@ export function DeclutterSuggestionsList({
   suggestions: RuleSuggestion[];
   categories: RuleSuggestionCategoryOption[];
 }) {
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
+  const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(() => new Set());
   const [flash, setFlash] = useState<string | null>(null);
   const { mutate } = useSWRConfig();
+  const router = useRouter();
 
   const clearCard = useCallback(
-    (emailEventId: string) => {
-      setHiddenIds((prev) => new Set(prev).add(emailEventId));
+    (suggestionKey: string) => {
+      setHiddenKeys((prev) => new Set(prev).add(suggestionKey));
       void mutate("/api/brief");
+      router.refresh();
     },
-    [mutate]
+    [mutate, router]
   );
 
-  const visible = suggestions.filter((s) => !hiddenIds.has(s.emailEventId));
+  const visible = suggestions.filter((s) => !hiddenKeys.has(s.suggestionKey));
 
   if (visible.length === 0) {
     return (
@@ -50,7 +53,7 @@ export function DeclutterSuggestionsList({
       <ul className="space-y-3">
         {visible.map((s) => (
           <RuleSuggestionCard
-            key={s.emailEventId}
+            key={s.suggestionKey}
             mode="declutter"
             suggestion={s}
             categories={categories}
@@ -59,7 +62,7 @@ export function DeclutterSuggestionsList({
               setFlash(msg);
               window.setTimeout(() => setFlash(null), 5000);
             }}
-            onCleared={() => clearCard(s.emailEventId)}
+            onCleared={() => clearCard(s.suggestionKey)}
           />
         ))}
       </ul>

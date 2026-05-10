@@ -91,6 +91,8 @@ export interface BriefPayload {
     recommendedValue: string;
     email: string | null;
     domain: string | null;
+    canonicalDomain: string | null;
+    suggestionKey: string;
     needsSender: boolean;
     needsDomain: boolean;
   }>;
@@ -674,6 +676,8 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       recommendedValue: s.recommendedValue,
       email: s.email,
       domain: s.domain,
+      canonicalDomain: s.canonicalDomain,
+      suggestionKey: s.suggestionKey,
       needsSender: s.needsSender,
       needsDomain: s.needsDomain,
     })),

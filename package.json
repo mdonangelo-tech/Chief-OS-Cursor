@@ -24,6 +24,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "swr": "^2.4.1",
+    "tldts": "^7.0.30",
     "zod": "^4.3.6"
   },
   "devDependencies": {

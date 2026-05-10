@@ -5,20 +5,42 @@ import { prisma } from "@/lib/prisma";
 import { ensureDeclutterRulesForCategories } from "@/lib/setup-defaults";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import {
+  extractDomainFromEmailOrHeader,
+  extractEmailAddress,
+  normalizeDomain,
+  suggestionSuppressionKeys,
+} from "@/lib/email/identity";
 
-function extractEmail(fromHeader: string): string | null {
-  const match = fromHeader.match(/<([^>]+)>/);
-  if (match) return match[1].toLowerCase().trim();
-  const trimmed = fromHeader.trim();
-  if (trimmed.includes("@")) return trimmed.toLowerCase();
-  return null;
+function suggestionIdentity(event: { from_: string; senderDomain: string | null }): {
+  email: string | null;
+  domain: string | null;
+} {
+  return {
+    email: extractEmailAddress(event.from_),
+    domain: extractDomainFromEmailOrHeader(event.from_) ?? normalizeDomain(event.senderDomain),
+  };
 }
 
-function extractDomain(fromHeader: string): string | null {
-  const email = extractEmail(fromHeader);
-  if (!email) return null;
-  const parts = email.split("@");
-  return parts.length === 2 ? parts[1].toLowerCase() : null;
+async function markSuggestionReviewed(args: {
+  userId: string;
+  email?: string | null;
+  domain?: string | null;
+  includePerson?: boolean;
+  includeDomain?: boolean;
+}) {
+  const includePerson = args.includePerson ?? true;
+  const includeDomain = args.includeDomain ?? true;
+  const data = suggestionSuppressionKeys({
+    email: includePerson ? args.email : null,
+    domain: includeDomain ? args.domain : null,
+  }).map((key) => ({
+    userId: args.userId,
+    type: key.type,
+    value: key.value,
+  }));
+  if (data.length === 0) return;
+  await prisma.rejectedSuggestion.createMany({ data, skipDuplicates: true });
 }
 
 export async function updateEmailCategory(formData: FormData) {
@@ -63,8 +85,7 @@ export async function saveAsRule(formData: FormData) {
   });
   if (!cat) return;
 
-  const email = extractEmail(event.from_);
-  const domain = extractDomain(event.from_) ?? event.senderDomain;
+  const { email, domain } = suggestionIdentity(event);
 
   if (ruleType === "sender" && email) {
     await prisma.personRule.upsert({
@@ -83,6 +104,7 @@ export async function saveAsRule(formData: FormData) {
       update: { categoryId },
     });
   }
+  await markSuggestionReviewed({ userId: session.user.id, email, domain });
 
   await prisma.emailEvent.update({
     where: { id: emailEventId },
@@ -134,27 +156,8 @@ export async function acceptSuggestion(formData: FormData) {
     include: { googleAccount: true },
   });
   if (!event || event.googleAccount.userId !== session.user.id) return;
-  const email = extractEmail(event.from_);
-  const domain = extractDomain(event.from_) ?? event.senderDomain;
-
-  if (email) {
-    await prisma.rejectedSuggestion.upsert({
-      where: {
-        userId_type_value: { userId: session.user.id, type: "person", value: email },
-      },
-      create: { userId: session.user.id, type: "person", value: email },
-      update: {},
-    });
-  }
-  if (domain) {
-    await prisma.rejectedSuggestion.upsert({
-      where: {
-        userId_type_value: { userId: session.user.id, type: "domain", value: domain },
-      },
-      create: { userId: session.user.id, type: "domain", value: domain },
-      update: {},
-    });
-  }
+  const { email, domain } = suggestionIdentity(event);
+  await markSuggestionReviewed({ userId: session.user.id, email, domain });
   revalidatePath("/brief");
   revalidatePath("/settings/declutter");
   const noRedirect = formData.get("noRedirect") === "true";
@@ -176,43 +179,23 @@ export async function rejectSuggestion(formData: FormData) {
     include: { googleAccount: true },
   });
   if (!event || event.googleAccount.userId !== session.user.id) return;
-  const email = extractEmail(event.from_);
-  const domain = extractDomain(event.from_) ?? event.senderDomain;
+  const { email, domain } = suggestionIdentity(event);
 
   if (ruleType === "both" || (!ruleType && (email || domain))) {
-    if (email) {
-      await prisma.rejectedSuggestion.upsert({
-        where: {
-          userId_type_value: { userId: session.user.id, type: "person", value: email },
-        },
-        create: { userId: session.user.id, type: "person", value: email },
-        update: {},
-      });
-    }
-    if (domain) {
-      await prisma.rejectedSuggestion.upsert({
-        where: {
-          userId_type_value: { userId: session.user.id, type: "domain", value: domain },
-        },
-        create: { userId: session.user.id, type: "domain", value: domain },
-        update: {},
-      });
-    }
+    await markSuggestionReviewed({ userId: session.user.id, email, domain });
   } else if (ruleType === "sender" && email) {
-    await prisma.rejectedSuggestion.upsert({
-      where: {
-        userId_type_value: { userId: session.user.id, type: "person", value: email },
-      },
-      create: { userId: session.user.id, type: "person", value: email },
-      update: {},
+    await markSuggestionReviewed({
+      userId: session.user.id,
+      email,
+      domain,
+      includeDomain: false,
     });
   } else if (ruleType === "domain" && domain) {
-    await prisma.rejectedSuggestion.upsert({
-      where: {
-        userId_type_value: { userId: session.user.id, type: "domain", value: domain },
-      },
-      create: { userId: session.user.id, type: "domain", value: domain },
-      update: {},
+    await markSuggestionReviewed({
+      userId: session.user.id,
+      email,
+      domain,
+      includePerson: false,
     });
   }
 
@@ -282,8 +265,7 @@ export async function approveRule(formData: FormData) {
     select: { name: true },
   });
 
-  const email = extractEmail(event.from_);
-  const domain = extractDomain(event.from_) ?? event.senderDomain;
+  const { email, domain } = suggestionIdentity(event);
 
   if (ruleType === "sender" && email) {
     await prisma.personRule.upsert({
@@ -298,6 +280,7 @@ export async function approveRule(formData: FormData) {
       update: { categoryId },
     });
   }
+  await markSuggestionReviewed({ userId: session.user.id, email, domain });
 
   await prisma.emailEvent.update({
     where: { id: emailEventId },

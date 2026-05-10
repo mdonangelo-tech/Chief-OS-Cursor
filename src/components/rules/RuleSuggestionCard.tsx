@@ -98,7 +98,7 @@ export interface RuleSuggestionCardProps {
   categories?: RuleSuggestionCategoryOption[];
   /** Declutter: return path for any legacy redirect (inline flow uses noRedirect). */
   declutterReturn?: string;
-  /** Declutter: remove row / clear local list after dismiss or reject (not after rule save). */
+  /** Remove row / clear local list after save, dismiss, or reject. */
   onCleared?: () => void;
   /** Brief / Declutter: success copy above the list so it survives row removal. */
   onFlashMessage?: (message: string) => void;
@@ -113,7 +113,13 @@ export function RuleSuggestionCard({
   onFlashMessage,
 }: RuleSuggestionCardProps) {
   if (mode === "brief") {
-    return <BriefSuggestionBody suggestion={s} onFlashMessage={onFlashMessage} />;
+    return (
+      <BriefSuggestionBody
+        suggestion={s}
+        onCleared={onCleared}
+        onFlashMessage={onFlashMessage}
+      />
+    );
   }
   return (
     <DeclutterSuggestionBody
@@ -128,9 +134,11 @@ export function RuleSuggestionCard({
 
 function BriefSuggestionBody({
   suggestion: s,
+  onCleared,
   onFlashMessage,
 }: {
   suggestion: RuleSuggestion;
+  onCleared?: () => void;
   onFlashMessage?: (message: string) => void;
 }) {
   const { mutate } = useSWRConfig();
@@ -153,12 +161,13 @@ function BriefSuggestionBody({
         fd.set("returnTo", BRIEF_RETURN);
         await fn(fd);
         onFlashMessage?.(message);
+        onCleared?.();
         await mutate("/api/brief");
         preserveBriefSuggestedHash();
         anchorSuggestedActions();
       });
     },
-    [mutate, onFlashMessage]
+    [mutate, onCleared, onFlashMessage]
   );
 
   const saveRule = (ruleType: "domain" | "sender") => {
@@ -314,9 +323,10 @@ function DeclutterSuggestionBody({
     (message: string) => {
       onFlashMessage?.(message);
       void mutate("/api/brief");
+      onCleared?.();
       anchorDeclutterSection();
     },
-    [mutate, onFlashMessage]
+    [mutate, onCleared, onFlashMessage]
   );
 
   const afterRowRemoved = useCallback(

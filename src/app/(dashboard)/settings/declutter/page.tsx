@@ -9,7 +9,7 @@ import { CategoryRuleRow } from "./CategoryRuleRow";
 import { DeclutterSuggestionsList } from "./DeclutterSuggestionsList";
 import { RuleRow } from "../../rules/RuleRow";
 import Link from "next/link";
-import { buildRuleSuggestions } from "@/services/declutter/suggestions";
+import { getRuleSuggestionsForUser } from "@/services/declutter/suggestions";
 
 function rulesHref(base: {
   importParam: string | null;
@@ -78,8 +78,7 @@ export default async function DeclutterPage({
   let orgRules: any[] = [];
   let personRuleCount = 0;
   let orgRuleCount = 0;
-  let suggestedEvents: any[] = [];
-  let rejected: any[] = [];
+  let suggestions: any[] = [];
   let gmailLabelsByAccount: GmailLabelsByAccountRow[] | null = null;
 
   try {
@@ -97,8 +96,7 @@ export default async function DeclutterPage({
       orgRules,
       personRuleCount,
       orgRuleCount,
-      suggestedEvents,
-      rejected,
+      suggestions,
       gmailLabelsByAccount,
     ] = await Promise.all([
       prisma.userDeclutterPref.findUnique({ where: { userId: session.user.id } }),
@@ -161,19 +159,7 @@ export default async function DeclutterPage({
               ...(ruleQ ? { domain: { contains: ruleQ, mode: "insensitive" as const } } : {}),
             },
           }),
-      prisma.emailEvent.findMany({
-        where: {
-          googleAccountId: { in: accountIds },
-          classificationCategoryId: { not: null },
-        },
-        include: { category: true },
-        orderBy: { date: "desc" },
-        take: 50,
-      }),
-      prisma.rejectedSuggestion.findMany({
-        where: { userId: session.user.id },
-        select: { type: true, value: true },
-      }),
+      getRuleSuggestionsForUser({ userId: session.user.id, googleAccountIds: accountIds, limit: 50 }),
       params.import === "gmail" && accounts.length > 0
         ? Promise.all(
             accounts.map(async (acc) => {
@@ -226,24 +212,12 @@ export default async function DeclutterPage({
     categoryRules.map((r) => [r.categoryId, r])
   );
 
-  const knownEmails = new Set(personRules.map((r) => r.email.toLowerCase()));
-  const knownDomains = new Set(orgRules.map((r) => r.domain.toLowerCase()));
-  const rejectedKeys = new Set(rejected.map((r) => `${r.type}:${r.value}`));
-
   const ruleTotal = ruleType === "person" ? personRuleCount : ruleType === "org" ? orgRuleCount : 0;
   const rulesTotalPages =
     ruleType === "all" || rulesPageSize === "all"
       ? 1
       : Math.max(1, Math.ceil(ruleTotal / rulesTake));
   const rulesPageClamped = Math.min(rulesPage, rulesTotalPages);
-
-  const suggestions = buildRuleSuggestions({
-    events: suggestedEvents,
-    knownEmails,
-    knownDomains,
-    rejectedKeys,
-    limit: 50,
-  });
 
   return (
     <div className="space-y-8">
