@@ -5,6 +5,7 @@ import { rollbackArchive, rollbackSpam } from "@/services/gmail/actions";
 import { rollbackRunAction } from "@/lib/brief-actions";
 import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import { LocalTime } from "@/components/LocalTime";
+import { FormWithConfirm } from "@/components/ui/FormWithConfirm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
@@ -301,17 +302,23 @@ export default async function AuditPage({
                     >
                       View entries
                     </Link>
-                    <form action={rollbackRunAction}>
-                    <input type="hidden" name="runId" value={runId} />
-                    <input
-                      type="hidden"
-                      name="returnTo"
-                      value={buildAuditUrl({ account: selectedAccountId ?? "all", sort, page: String(safePage), pageSize: pageSizeRaw, runId: runIdFilter ?? undefined })}
-                    />
-                    <button type="submit" className="text-sm text-accent hover:text-accent/80">
-                      Undo entire run
-                    </button>
-                  </form>
+                    <FormWithConfirm
+                      action={rollbackRunAction}
+                      message={`Undo all ${processed} actions in this run? Gmail will restore labels where possible.`}
+                    >
+                      <input type="hidden" name="runId" value={runId} />
+                      <input
+                        type="hidden"
+                        name="returnTo"
+                        value={buildAuditUrl({ account: selectedAccountId ?? "all", sort, page: String(safePage), pageSize: pageSizeRaw, runId: runIdFilter ?? undefined })}
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-lg px-2 py-1 text-sm text-muted-foreground border border-border/10 hover:text-foreground hover:bg-surface2/50"
+                      >
+                        Undo run…
+                      </button>
+                    </FormWithConfirm>
                   </div>
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground/80">
@@ -512,7 +519,7 @@ export default async function AuditPage({
                     >
                       Open in Gmail
                     </a>
-                    <form
+                    <FormWithConfirm
                       action={async () => {
                         "use server";
                         if (log.actionType === "SPAM") {
@@ -530,14 +537,15 @@ export default async function AuditPage({
                           })
                         );
                       }}
+                      message="Undo this single action in Gmail?"
                     >
                       <button
                         type="submit"
-                        className="text-sm text-accent hover:text-accent/80"
+                        className="rounded-lg px-2 py-1 text-sm text-muted-foreground border border-border/10 hover:text-foreground hover:bg-surface2/50"
                       >
-                        Undo
+                        Undo…
                       </button>
-                    </form>
+                    </FormWithConfirm>
                   </div>
                 )}
               </div>

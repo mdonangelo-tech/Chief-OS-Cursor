@@ -39,5 +39,31 @@ yarn-error.log*
 next-env.d.ts
 src/lib/decision-engine.smoke.ts
 
-# Cursor
-.cursor/
+# Ignore everything in .cursor by default
+.cursor/*
+
+# Keep AI operating system files
+!.cursor/README.md
+
+!.cursor/agents/
+!.cursor/agents/**
+
+!.cursor/rules/
+!.cursor/rules/**
+
+!.cursor/skills/
+!.cursor/skills/**
+
+!.cursor/plans/
+!.cursor/plans/README.md
+
+!.cursor/handoffs/
+!.cursor/handoffs/README.md
+
+!.cursor/decisions/
+!.cursor/decisions/README.md
+
+# Ignore runtime/generated artifacts
+.cursor/debug.log
+.cursor/plans/*.md
+.cursor/handoffs/*.md

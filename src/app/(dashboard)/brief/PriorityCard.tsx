@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { mutate } from "swr";
 import { decodeHtmlEntities } from "@/lib/html-entities";
 
 const GMAIL_BASE = "https://mail.google.com/mail";
@@ -97,6 +98,7 @@ export function PriorityCard({
       setError(null);
       try {
         await postJson<{ ok: true }>("/api/brief/priority-feedback", { emailEventId: id, feedback });
+        await mutate("/api/brief");
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed");
@@ -114,6 +116,7 @@ export function PriorityCard({
           categoryId: nextId,
         });
         setShowCategory(false);
+        await mutate("/api/brief");
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed");

@@ -57,9 +57,20 @@ export function buildRuleSuggestions(args: {
     seen.add(e.id);
 
     const email = extractEmail(e.from_);
-    const domain = extractDomain(e.from_) ?? e.senderDomain;
-    const needsSender = !!email && !args.knownEmails.has(email) && !args.rejectedKeys.has(`person:${email}`);
-    const needsDomain = !!domain && !args.knownDomains.has(domain) && !args.rejectedKeys.has(`domain:${domain}`);
+    const rawDomain = extractDomain(e.from_) ?? e.senderDomain;
+    const domain =
+      rawDomain != null && String(rawDomain).trim() !== ""
+        ? String(rawDomain).trim().toLowerCase()
+        : null;
+    const domainCoveredByOrgRule = !!domain && args.knownDomains.has(domain);
+    // Org/domain rule applies to all senders on that domain — do not suggest a redundant person rule.
+    const needsSender =
+      !!email &&
+      !args.knownEmails.has(email) &&
+      !args.rejectedKeys.has(`person:${email}`) &&
+      !domainCoveredByOrgRule;
+    const needsDomain =
+      !!domain && !args.knownDomains.has(domain) && !args.rejectedKeys.has(`domain:${domain}`);
     if (!needsSender && !needsDomain) continue;
 
     const conf =
@@ -136,8 +147,8 @@ export async function getRuleSuggestionsForUser(args: {
     }),
   ]);
 
-  const knownEmails = new Set(personRules.map((r) => r.email));
-  const knownDomains = new Set(orgRules.map((r) => r.domain));
+  const knownEmails = new Set(personRules.map((r) => r.email.toLowerCase()));
+  const knownDomains = new Set(orgRules.map((r) => r.domain.toLowerCase()));
   const rejectedKeys = new Set(rejected.map((r) => `${r.type}:${r.value}`));
 
   return buildRuleSuggestions({

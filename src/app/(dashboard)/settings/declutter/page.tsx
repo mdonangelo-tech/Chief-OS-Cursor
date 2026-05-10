@@ -6,7 +6,7 @@ import { asDbErrorInfo } from "@/lib/db-errors";
 import { listUserLabels, type GmailLabelInfo } from "@/services/gmail/labels";
 import { AutoArchiveToggle } from "./AutoArchiveToggle";
 import { CategoryRuleRow } from "./CategoryRuleRow";
-import { SuggestionRow } from "../../rules/SuggestionRow";
+import { RuleSuggestionCard } from "@/components/rules/RuleSuggestionCard";
 import { RuleRow } from "../../rules/RuleRow";
 import Link from "next/link";
 import { buildRuleSuggestions } from "@/services/declutter/suggestions";
@@ -216,7 +216,6 @@ export default async function DeclutterPage({
     );
   }
 
-  const accountIds = accounts.map((a) => a.id);
   const gmailLabelsByAccountResult = gmailLabelsByAccount;
   const gmailLabelsError =
     gmailLabelsByAccountResult?.some((a) => "error" in a)
@@ -227,8 +226,8 @@ export default async function DeclutterPage({
     categoryRules.map((r) => [r.categoryId, r])
   );
 
-  const knownEmails = new Set(personRules.map((r) => r.email));
-  const knownDomains = new Set(orgRules.map((r) => r.domain));
+  const knownEmails = new Set(personRules.map((r) => r.email.toLowerCase()));
+  const knownDomains = new Set(orgRules.map((r) => r.domain.toLowerCase()));
   const rejectedKeys = new Set(rejected.map((r) => `${r.type}:${r.value}`));
 
   const ruleTotal = ruleType === "person" ? personRuleCount : ruleType === "org" ? orgRuleCount : 0;
@@ -313,17 +312,10 @@ export default async function DeclutterPage({
             </div>
             <ul className="space-y-3">
               {suggestions.map((s) => (
-                <SuggestionRow
+                <RuleSuggestionCard
                   key={s.emailEventId}
-                  id={s.emailEventId}
-                  from={s.from}
-                  snippet={s.snippet}
-                  categoryName={s.categoryName}
-                  categoryId={s.categoryId}
-                  confidence={s.confidence}
-                  band={s.band}
-                  hasSender={s.needsSender}
-                  hasDomain={s.needsDomain}
+                  mode="declutter"
+                  suggestion={s}
                   categories={categories}
                 />
               ))}

@@ -10,6 +10,12 @@ export type PriorityEmailInput = {
   fromEmail?: string | null;
   briefDismissedAt?: Date | string | null;
   briefNotImportantAt?: Date | string | null;
+  /** ThreadAttention.closedAt (handled / dismissed at thread level). */
+  threadClosedAt?: Date | string | null;
+  /** ThreadAttention: not_important or neverSimilar. */
+  threadNotImportant?: boolean;
+  /** Active snooze hides item from priorities until this time. */
+  threadSnoozeUntil?: Date | string | null;
   explainJson?: Record<string, unknown> | null;
 };
 
@@ -33,18 +39,37 @@ export function isLowSignalPriorityCategoryName(
   return excludePriorityCategories.some((c) => n.includes(c.toLowerCase()));
 }
 
+function ts(v: Date | string | null | undefined): number | null {
+  if (v == null) return null;
+  const t = typeof v === "string" ? new Date(v).getTime() : v.getTime();
+  return Number.isFinite(t) ? t : null;
+}
+
+function isSnoozedActive(e: PriorityEmailInput, nowMs: number): boolean {
+  const t = ts(e.threadSnoozeUntil ?? null);
+  return t != null && t > nowMs;
+}
+
 function isHandled(e: PriorityEmailInput): boolean {
-  return !!e.briefDismissedAt;
+  return !!e.briefDismissedAt || !!e.threadClosedAt;
 }
 
 function isNotImportant(e: PriorityEmailInput): boolean {
-  return !!e.briefNotImportantAt;
+  return !!e.briefNotImportantAt || !!e.threadNotImportant;
 }
 
 export function computePriorityScore(
   e: PriorityEmailInput,
-  opts: { excludePriorityCategories: string[]; boostCategories: string[] }
+  opts: {
+    excludePriorityCategories: string[];
+    boostCategories: string[];
+    /** Optional ranking penalties from UserRankingProfile (0–1 each). */
+    rankingPenalties?: { byDomain?: Record<string, number>; bySender?: Record<string, number> };
+    nowMs?: number;
+  }
 ): number {
+  const nowMs = opts.nowMs ?? Date.now();
+  if (isSnoozedActive(e, nowMs)) return 0;
   // Handled/acknowledged means: remove from active attention.
   if (isHandled(e)) return 0;
   // Not important means: this item should not resurface unchanged.
@@ -59,13 +84,25 @@ export function computePriorityScore(
     opts.boostCategories.some((b) => cat.toLowerCase().includes(b.toLowerCase()));
   const boost = boosted ? 0.15 : 0;
 
-  const base = needs || imp >= 0.8 ? 1 : imp >= 0.6 ? 0.8 : unread ? 0.4 : 0;
-  return base + boost;
+  let base = needs || imp >= 0.8 ? 1 : imp >= 0.6 ? 0.8 : unread ? 0.4 : 0;
+  const pen = opts.rankingPenalties;
+  if (pen && base > 0 && !needs) {
+    const dom = (e.senderDomain ?? "").toLowerCase().trim();
+    const snd = (e.fromEmail ?? "").toLowerCase().trim();
+    if (snd && pen.bySender?.[snd] != null) base -= Math.min(0.85, Math.max(0, pen.bySender[snd]));
+    else if (dom && pen.byDomain?.[dom] != null) base -= Math.min(0.55, Math.max(0, pen.byDomain[dom]));
+  }
+  return Math.max(0, base + boost);
 }
 
 export function buildPriorityExplanation(
   e: PriorityEmailInput,
-  opts: { excludePriorityCategories: string[]; boostCategories: string[] }
+  opts: {
+    excludePriorityCategories: string[];
+    boostCategories: string[];
+    rankingPenalties?: { byDomain?: Record<string, number>; bySender?: Record<string, number> };
+    nowMs?: number;
+  }
 ): PriorityExplanation {
   const signals: string[] = [];
   const cat = e.categoryName ?? null;
@@ -75,6 +112,17 @@ export function buildPriorityExplanation(
   const actionType = e.actionType ?? null;
   const explain = e.explainJson ?? null;
 
+  const nowMs = opts.nowMs ?? Date.now();
+  if (isSnoozedActive(e, nowMs)) signals.push("snoozed");
+  if (e.threadClosedAt) signals.push("thread_handled");
+  if (e.threadNotImportant) signals.push("thread_not_important");
+  const pen = opts.rankingPenalties;
+  if (pen && !needs) {
+    const dom = (e.senderDomain ?? "").toLowerCase().trim();
+    const snd = (e.fromEmail ?? "").toLowerCase().trim();
+    if (snd && pen.bySender?.[snd]) signals.push("learned:sender_downrank");
+    else if (dom && pen.byDomain?.[dom]) signals.push("learned:domain_downrank");
+  }
   if (needs === true) signals.push("needs_action");
   if (actionType) signals.push(`action:${actionType}`);
 
@@ -111,7 +159,9 @@ export function buildPriorityExplanation(
   }
 
   let summary: string | null = null;
-  if (needs === true) {
+  if (isSnoozedActive(e, nowMs)) {
+    summary = "Snoozed — ChiefOS will bring this back after the quiet period.";
+  } else if (needs === true) {
     if (actionType === "reply") summary = "Likely needs a reply.";
     else if (actionType === "schedule") summary = "Likely needs scheduling.";
     else if (actionType === "read") summary = "Worth reading soon.";
@@ -134,6 +184,18 @@ export function buildPriorityExplanation(
     summary = "Surfaced with low confidence — correct it if it’s wrong.";
   }
 
+  if (
+    summary &&
+    (signals.includes("learned:sender_downrank") || signals.includes("learned:domain_downrank"))
+  ) {
+    summary = `${summary} Rank adjusted from your past “not important” feedback.`;
+  } else if (
+    !summary &&
+    (signals.includes("learned:sender_downrank") || signals.includes("learned:domain_downrank"))
+  ) {
+    summary = "Rank adjusted from your past “not important” feedback.";
+  }
+
   return { summary, signals };
 }
 
@@ -145,6 +207,8 @@ export function selectTopPriorities(
     maxPriorities: number;
     allowLowSignalIfImportanceAtLeast?: number;
     minScore?: number;
+    rankingPenalties?: { byDomain?: Record<string, number>; bySender?: Record<string, number> };
+    nowMs?: number;
   }
 ): Array<{ id: string; score: number; explanation: PriorityExplanation }> {
   const allowLowSignalIfImportanceAtLeast = opts.allowLowSignalIfImportanceAtLeast ?? 0.9;
@@ -152,13 +216,13 @@ export function selectTopPriorities(
 
   const notImportantSenders = new Set(
     emails
-      .filter((e) => !!e.briefNotImportantAt)
+      .filter((e) => !!e.briefNotImportantAt || !!e.threadNotImportant)
       .map((e) => (e.fromEmail ?? "").toLowerCase().trim())
       .filter(Boolean)
   );
   const notImportantDomains = new Set(
     emails
-      .filter((e) => !!e.briefNotImportantAt)
+      .filter((e) => !!e.briefNotImportantAt || !!e.threadNotImportant)
       .map((e) => (e.senderDomain ?? "").toLowerCase().trim())
       .filter(Boolean)
   );

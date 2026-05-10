@@ -15,6 +15,12 @@ import {
   isLowSignalPriorityCategoryName,
   type PriorityEmailInput,
 } from "@/services/brief/intelligence";
+import { loadRankingPenalties } from "@/services/attention/ranking-profile";
+import {
+  loadThreadAttentionMap,
+  threadAttentionKey,
+  threadAttentionSuppressesOpenLoop,
+} from "@/services/attention/thread-attention";
 
 const EXCLUDE_PRIORITY_CATEGORIES = ["Newsletters", "Promotions", "Low-priority"];
 const BOOST_CATEGORIES = ["Work", "Portfolio", "Job Search", "Kids logistics"];
@@ -202,6 +208,8 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     suggestedActions,
     calendarPrefs,
     activeGoals,
+    attentionMap,
+    rankingPenalties,
   ] = await Promise.all([
     prisma.emailEvent.findMany({
       where: {
@@ -245,6 +253,8 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       orderBy: { createdAt: "asc" },
       take: 6,
     }),
+    loadThreadAttentionMap({ userId, googleAccountIds: accountIds }),
+    loadRankingPenalties(userId),
   ]);
   const timeZone = safeTimeZone(calendarPrefs?.timezone ?? null);
   const localToday = localDayKey(new Date(), timeZone);
@@ -266,8 +276,27 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
   const digestEmails = unreadEmails.filter((e) => isDigestCategory(e.category?.name ?? null));
   const nonDigest = unreadEmails.filter((e) => !isDigestCategory(e.category?.name ?? null));
 
+  const briefAssembledAt = new Date();
+  const briefNowMs = briefAssembledAt.getTime();
+  const priorityScoreOpts: Parameters<typeof computePriorityScorePure>[1] = {
+    excludePriorityCategories: EXCLUDE_PRIORITY_CATEGORIES,
+    boostCategories: BOOST_CATEGORIES,
+    nowMs: briefNowMs,
+  };
+  if (
+    Object.keys(rankingPenalties.byDomain).length > 0 ||
+    Object.keys(rankingPenalties.bySender).length > 0
+  ) {
+    priorityScoreOpts.rankingPenalties = rankingPenalties;
+  }
+
   function toPriorityInput(e: (typeof nonDigest)[number]): PriorityEmailInput {
     const fromEmail = extractEmail(e.from_) ?? null;
+    const att = attentionMap.get(threadAttentionKey(e.googleAccountId, e.threadId));
+    const threadClosedAt = att?.closedAt ?? null;
+    const threadNotImportant =
+      att?.importance === "not_important" || att?.neverSimilar === true;
+    const threadSnoozeUntil = att?.snoozeUntil ?? null;
     return {
       id: e.id,
       unread: e.unread,
@@ -280,25 +309,22 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       fromEmail,
       briefDismissedAt: e.briefDismissedAt ?? null,
       briefNotImportantAt: e.briefNotImportantAt ?? null,
+      threadClosedAt,
+      threadNotImportant: !!threadNotImportant,
+      threadSnoozeUntil,
       explainJson: (e.explainJson as Record<string, unknown>) ?? null,
     };
   }
 
   function priorityScore(e: (typeof nonDigest)[number]): number {
-    return computePriorityScorePure(toPriorityInput(e), {
-      excludePriorityCategories: EXCLUDE_PRIORITY_CATEGORIES,
-      boostCategories: BOOST_CATEGORIES,
-    });
+    return computePriorityScorePure(toPriorityInput(e), priorityScoreOpts);
   }
 
   function buildPriorityExplanation(e: (typeof nonDigest)[number]): {
     summary: string | null;
     signals: string[];
   } {
-    return buildPriorityExplanationPure(toPriorityInput(e), {
-      excludePriorityCategories: EXCLUDE_PRIORITY_CATEGORIES,
-      boostCategories: BOOST_CATEGORIES,
-    });
+    return buildPriorityExplanationPure(toPriorityInput(e), priorityScoreOpts);
   }
 
   const priorityCandidates = nonDigest.filter((e) => {
@@ -345,8 +371,22 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
 
   for (const [threadId, emails] of byThread) {
     if (usedThreads.has(threadId)) continue;
+    // Brief feedback lives on EmailEvent (per message). If any message in the thread was marked
+    // not important or dismissed/acknowledged on the Brief, suppress the whole thread from open loops
+    // so "What matters" and open loops share the same user intent (see ThreadAttention for snooze/state).
+    if (
+      emails.some(
+        (m) => m.briefNotImportantAt != null || m.briefDismissedAt != null
+      )
+    ) {
+      continue;
+    }
     const sorted = [...emails].sort((a, b) => b.date.getTime() - a.date.getTime());
     const latest = sorted[0];
+    const attOpen = attentionMap.get(
+      threadAttentionKey(latest.googleAccountId, threadId)
+    );
+    if (threadAttentionSuppressesOpenLoop(attOpen, briefAssembledAt)) continue;
     const acc = accountById.get(latest.googleAccountId)!;
     const accountType =
       accountTypeById.get(latest.googleAccountId) ?? inferAccountTypeFromEmail(acc.email);

@@ -1,24 +1,22 @@
 "use client";
 
 import { deleteCategory } from "@/lib/setup-actions";
+import { Button } from "@/components/ui/Button";
 
 export function DeleteCategoryButton({ id }: { id: string }) {
   return (
     <form
       action={deleteCategory}
       onSubmit={(e) => {
-        if (!confirm("Delete this category?")) {
+        if (!confirm("Delete this category? This cannot be undone.")) {
           e.preventDefault();
         }
       }}
     >
       <input type="hidden" name="id" value={id} />
-      <button
-        type="submit"
-        className="text-xs text-red-500/80 hover:text-red-400"
-      >
-        Delete
-      </button>
+      <Button variant="destructive" type="submit" className="w-full">
+        Delete category
+      </Button>
     </form>
   );
 }

@@ -1,12 +1,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  addCategory,
-  renameCategory,
-  setCategoryParent,
-  toggleCategoryProtected,
-} from "@/lib/setup-actions";
-import { DeleteCategoryButton } from "./DeleteCategoryButton";
+import { addCategory } from "@/lib/setup-actions";
+import { CategoryRow } from "./CategoryRow";
+import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 
 function extractDomain(fromHeader: string): string | null {
@@ -75,8 +71,8 @@ export default async function CategoriesPage() {
       <div>
         <h1 className="text-2xl font-semibold">Categories</h1>
         <p className="text-muted-foreground mt-1">
-          Create, rename, and organize categories. Set parent for subcategories.
-          Protected categories are never auto-archived.
+          Create, rename, and organize categories. Use <strong>More</strong> on each row for parent,
+          protection, or delete. Protected categories are never auto-archived.
         </p>
       </div>
 
@@ -91,12 +87,9 @@ export default async function CategoriesPage() {
             required
             className="rounded-xl border border-border/10 bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground w-48"
           />
-          <button
-            type="submit"
-            className="rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90"
-          >
+          <Button variant="primary" type="submit" className="px-4 py-2">
             Add
-          </button>
+          </Button>
         </form>
       </section>
 
@@ -137,55 +130,7 @@ export default async function CategoriesPage() {
         ) : (
           <ul className="space-y-2">
             {categories.map((c) => (
-              <li
-                key={c.id}
-                className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/10 bg-surface/60 px-4 py-3 shadow-soft"
-              >
-                <form action={renameCategory} className="flex items-center gap-2">
-                  <input type="hidden" name="id" value={c.id} />
-                  <input
-                    type="text"
-                    name="name"
-                    defaultValue={c.name}
-                    className="bg-transparent text-foreground outline-none border-b border-transparent hover:border-border/40 w-32"
-                  />
-                  <button type="submit" className="text-xs text-muted-foreground hover:text-foreground">
-                    Rename
-                  </button>
-                </form>
-                <form action={setCategoryParent} className="flex items-center gap-2">
-                  <input type="hidden" name="id" value={c.id} />
-                  <select
-                    name="parentId"
-                    defaultValue={c.parentId ?? ""}
-                    className="rounded-xl border border-border/10 bg-background px-2 py-1 text-sm text-foreground"
-                  >
-                    <option value="">— None (root)</option>
-                    {roots.filter((p) => p.id !== c.id).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button type="submit" className="text-xs text-muted-foreground hover:text-foreground">
-                    Set parent
-                  </button>
-                </form>
-                <form action={toggleCategoryProtected}>
-                  <input type="hidden" name="id" value={c.id} />
-                  <button
-                    type="submit"
-                    className={`text-xs px-2 py-0.5 rounded ${
-                      c.protectedFromAutoArchive
-                        ? "bg-accent/15 text-accent"
-                        : "bg-muted text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {c.protectedFromAutoArchive ? "Protected" : "Not protected"}
-                  </button>
-                </form>
-                <DeleteCategoryButton id={c.id} />
-              </li>
+              <CategoryRow key={c.id} c={c} roots={roots} />
             ))}
           </ul>
         )}
