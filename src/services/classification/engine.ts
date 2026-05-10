@@ -12,6 +12,7 @@ import {
   getLlmStatus,
   isLlmClassificationEnabled,
 } from "@/services/llm";
+import { isProtectedAttentionEmail } from "@/services/attention/ranking-signals";
 
 export interface ClassificationResult {
   categoryId: string | null;
@@ -149,6 +150,47 @@ export async function classifyEmailEvent(
         actionType: "ignore",
         confidence: 0.95,
         explainJson: { source: "rule", categoryName: "Promotions", reason: "Gmail label" },
+      };
+      await prisma.emailEvent.update({
+        where: { id: emailEventId },
+        data: {
+          classificationCategoryId: result.categoryId,
+          importanceScore: result.importanceScore,
+          needsAction: result.needsAction,
+          actionType: result.actionType,
+          confidence: result.confidence,
+          explainJson: result.explainJson as object,
+        },
+      });
+      return result;
+    }
+  }
+  if (labels.includes("CATEGORY_SOCIAL")) {
+    const protectedSocial = isProtectedAttentionEmail({
+      fromEmail: fromEmail ?? event.from_,
+      senderDomain: domain,
+      subject: event.subject,
+      snippet: event.snippet,
+    });
+    const cat =
+      (await prisma.category.findFirst({
+        where: { userId, name: protectedSocial ? "Personal" : "Notifications" },
+      })) ??
+      (await prisma.category.findFirst({
+        where: { userId, name: protectedSocial ? "Other" : "Low-priority" },
+      }));
+    if (cat) {
+      const result: ClassificationResult = {
+        categoryId: cat.id,
+        importanceScore: protectedSocial ? 0.9 : 0.35,
+        needsAction: protectedSocial ? true : false,
+        actionType: "read",
+        confidence: protectedSocial ? 0.85 : 0.95,
+        explainJson: {
+          source: "rule",
+          categoryName: cat.name,
+          reason: protectedSocial ? "Protected account/security signal" : "Gmail social label",
+        },
       };
       await prisma.emailEvent.update({
         where: { id: emailEventId },

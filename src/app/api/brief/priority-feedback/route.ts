@@ -51,6 +51,10 @@ async function postImpl(req: NextRequest) {
       googleAccountId: true,
       from_: true,
       senderDomain: true,
+      subject: true,
+      snippet: true,
+      labels: true,
+      category: { select: { name: true } },
     },
   });
   if (!ev) {
@@ -89,6 +93,10 @@ async function postImpl(req: NextRequest) {
       userId: session.user.id,
       fromEmail,
       senderDomain: domain,
+      categoryName: ev.category?.name ?? null,
+      labels: ev.labels,
+      subject: ev.subject,
+      snippet: ev.snippet,
     });
   }
 

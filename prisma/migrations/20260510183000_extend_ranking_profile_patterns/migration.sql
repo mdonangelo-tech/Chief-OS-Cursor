@@ -1,0 +1,4 @@
+ALTER TABLE "UserRankingProfile"
+ADD COLUMN IF NOT EXISTS "canonicalDomainPenalties" JSONB NOT NULL DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS "categoryPenalties" JSONB NOT NULL DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS "patternPenalties" JSONB NOT NULL DEFAULT '{}';

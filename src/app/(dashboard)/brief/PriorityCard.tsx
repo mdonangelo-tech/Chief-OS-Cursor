@@ -138,7 +138,9 @@ export function PriorityCard({
           </span>
         )}
         {confidence != null && (
-          <span className="text-muted-foreground/80">{Math.round(confidence * 100)}%</span>
+          <span className="text-muted-foreground/80" title="Classification confidence">
+            Classified {Math.round(confidence * 100)}%
+          </span>
         )}
         {actionType && (
           <span className="text-muted-foreground italic">{actionLabel(actionType)}</span>

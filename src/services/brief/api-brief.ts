@@ -17,6 +17,10 @@ import {
 } from "@/services/brief/intelligence";
 import { loadRankingPenalties } from "@/services/attention/ranking-profile";
 import {
+  rankingSignalKeys,
+  strongestLearnedPenalty,
+} from "@/services/attention/ranking-signals";
+import {
   loadThreadAttentionMap,
   threadAttentionKey,
   threadAttentionSuppressesOpenLoop,
@@ -287,7 +291,10 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
   };
   if (
     Object.keys(rankingPenalties.byDomain).length > 0 ||
-    Object.keys(rankingPenalties.bySender).length > 0
+    Object.keys(rankingPenalties.bySender).length > 0 ||
+    Object.keys(rankingPenalties.byCanonicalDomain).length > 0 ||
+    Object.keys(rankingPenalties.byCategory).length > 0 ||
+    Object.keys(rankingPenalties.byPattern).length > 0
   ) {
     priorityScoreOpts.rankingPenalties = rankingPenalties;
   }
@@ -309,6 +316,9 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       categoryName: e.category?.name ?? null,
       senderDomain: e.senderDomain ?? null,
       fromEmail,
+      labels: e.labels ?? [],
+      subject: e.subject ?? null,
+      snippet: e.snippet ?? null,
       briefDismissedAt: e.briefDismissedAt ?? null,
       briefNotImportantAt: e.briefNotImportantAt ?? null,
       threadClosedAt,
@@ -334,13 +344,24 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     const needs = e.needsAction ?? false;
     const unread = e.unread;
     const catName = e.category?.name ?? null;
+    const input = toPriorityInput(e);
+    const keys = rankingSignalKeys(input);
+    const learned = strongestLearnedPenalty(input, priorityScoreOpts.rankingPenalties);
 
     // Explicitly suppress obvious low-signal categories unless they truly need action.
     // Keep this conservative: allow through if needsAction or very-high importance.
-    if (isLowSignalPriorityCategory(catName) && !needs && imp < 0.9) return false;
+    if (
+      !keys.isProtected &&
+      (isLowSignalPriorityCategory(catName) || keys.isLowSignalNotification) &&
+      !needs &&
+      imp < 0.9
+    ) {
+      return false;
+    }
+    if (keys.isLowSignalNotification && learned.value >= 0.34) return false;
 
     if (!unread && !needs && imp < 0.8) return false;
-    return priorityScore(e) >= 0.6;
+    return computePriorityScorePure(input, priorityScoreOpts) >= 0.6;
   });
 
   const priorities = priorityCandidates
@@ -394,6 +415,10 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       accountTypeById.get(latest.googleAccountId) ?? inferAccountTypeFromEmail(acc.email);
     const accountLabel = acc.userDefinedLabel || (accountType === "work" ? "Work" : "Personal");
     const fromEmail = extractEmail(latest.from_);
+    const latestPriorityInput = toPriorityInput(latest);
+    const latestKeys = rankingSignalKeys(latestPriorityInput);
+    if (latestKeys.isLowSignalNotification) continue;
+
     const isFromUser = acc && fromEmail && acc.email.toLowerCase() === fromEmail;
     const days = daysAgo(latest.date);
     if (isFromUser && latest.date < cutoffOwe && days >= OWE_REPLY_DAYS) {

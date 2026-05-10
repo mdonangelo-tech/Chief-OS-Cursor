@@ -1,3 +1,10 @@
+import {
+  isLowSignalCategoryName,
+  rankingSignalKeys,
+  strongestLearnedPenalty,
+  type RankingPenalties,
+} from "@/services/attention/ranking-signals";
+
 export type PriorityEmailInput = {
   id: string;
   unread: boolean;
@@ -8,6 +15,9 @@ export type PriorityEmailInput = {
   categoryName: string | null;
   senderDomain?: string | null;
   fromEmail?: string | null;
+  labels?: string[] | null;
+  subject?: string | null;
+  snippet?: string | null;
   briefDismissedAt?: Date | string | null;
   briefNotImportantAt?: Date | string | null;
   /** ThreadAttention.closedAt (handled / dismissed at thread level). */
@@ -36,7 +46,7 @@ export function isLowSignalPriorityCategoryName(
 ): boolean {
   if (!name) return false;
   const n = name.toLowerCase();
-  return excludePriorityCategories.some((c) => n.includes(c.toLowerCase()));
+  return excludePriorityCategories.some((c) => n.includes(c.toLowerCase())) || isLowSignalCategoryName(n);
 }
 
 function ts(v: Date | string | null | undefined): number | null {
@@ -64,7 +74,7 @@ export function computePriorityScore(
     excludePriorityCategories: string[];
     boostCategories: string[];
     /** Optional ranking penalties from UserRankingProfile (0–1 each). */
-    rankingPenalties?: { byDomain?: Record<string, number>; bySender?: Record<string, number> };
+    rankingPenalties?: Partial<RankingPenalties>;
     nowMs?: number;
   }
 ): number {
@@ -85,12 +95,13 @@ export function computePriorityScore(
   const boost = boosted ? 0.15 : 0;
 
   let base = needs || imp >= 0.8 ? 1 : imp >= 0.6 ? 0.8 : unread ? 0.4 : 0;
-  const pen = opts.rankingPenalties;
-  if (pen && base > 0 && !needs) {
-    const dom = (e.senderDomain ?? "").toLowerCase().trim();
-    const snd = (e.fromEmail ?? "").toLowerCase().trim();
-    if (snd && pen.bySender?.[snd] != null) base -= Math.min(0.85, Math.max(0, pen.bySender[snd]));
-    else if (dom && pen.byDomain?.[dom] != null) base -= Math.min(0.55, Math.max(0, pen.byDomain[dom]));
+  const learned = strongestLearnedPenalty(e, opts.rankingPenalties);
+  if (learned.value > 0 && base > 0) {
+    const keys = rankingSignalKeys(e);
+    if (!needs || keys.isLowSignalNotification) {
+      base -= learned.value;
+      if (keys.isLowSignalNotification && learned.value >= 0.34) return 0;
+    }
   }
   return Math.max(0, base + boost);
 }
@@ -100,7 +111,7 @@ export function buildPriorityExplanation(
   opts: {
     excludePriorityCategories: string[];
     boostCategories: string[];
-    rankingPenalties?: { byDomain?: Record<string, number>; bySender?: Record<string, number> };
+    rankingPenalties?: Partial<RankingPenalties>;
     nowMs?: number;
   }
 ): PriorityExplanation {
@@ -116,12 +127,17 @@ export function buildPriorityExplanation(
   if (isSnoozedActive(e, nowMs)) signals.push("snoozed");
   if (e.threadClosedAt) signals.push("thread_handled");
   if (e.threadNotImportant) signals.push("thread_not_important");
-  const pen = opts.rankingPenalties;
-  if (pen && !needs) {
-    const dom = (e.senderDomain ?? "").toLowerCase().trim();
-    const snd = (e.fromEmail ?? "").toLowerCase().trim();
-    if (snd && pen.bySender?.[snd]) signals.push("learned:sender_downrank");
-    else if (dom && pen.byDomain?.[dom]) signals.push("learned:domain_downrank");
+  const keys = rankingSignalKeys(e);
+  const learned = strongestLearnedPenalty(e, opts.rankingPenalties);
+  if (learned.source && learned.value > 0 && (!needs || keys.isLowSignalNotification)) {
+    if (learned.source === "sender") signals.push("learned:sender_downrank");
+    else if (learned.source === "domain") signals.push("learned:domain_downrank");
+    else if (learned.source === "canonical_domain") signals.push("learned:org_downrank");
+    else if (learned.source === "category") signals.push("learned:category_downrank");
+    else if (learned.source === "pattern") signals.push("learned:pattern_downrank");
+  }
+  if (keys.isLowSignalNotification) {
+    signals.push("notification:low_signal");
   }
   if (needs === true) signals.push("needs_action");
   if (actionType) signals.push(`action:${actionType}`);
@@ -184,15 +200,10 @@ export function buildPriorityExplanation(
     summary = "Surfaced with low confidence — correct it if it’s wrong.";
   }
 
-  if (
-    summary &&
-    (signals.includes("learned:sender_downrank") || signals.includes("learned:domain_downrank"))
-  ) {
+  const learnedSignals = signals.some((s) => s.startsWith("learned:"));
+  if (summary && learnedSignals) {
     summary = `${summary} Rank adjusted from your past “not important” feedback.`;
-  } else if (
-    !summary &&
-    (signals.includes("learned:sender_downrank") || signals.includes("learned:domain_downrank"))
-  ) {
+  } else if (!summary && learnedSignals) {
     summary = "Rank adjusted from your past “not important” feedback.";
   }
 
@@ -207,7 +218,7 @@ export function selectTopPriorities(
     maxPriorities: number;
     allowLowSignalIfImportanceAtLeast?: number;
     minScore?: number;
-    rankingPenalties?: { byDomain?: Record<string, number>; bySender?: Record<string, number> };
+    rankingPenalties?: Partial<RankingPenalties>;
     nowMs?: number;
   }
 ): Array<{ id: string; score: number; explanation: PriorityExplanation }> {
@@ -230,7 +241,12 @@ export function selectTopPriorities(
   const candidates = emails.filter((e) => {
     const imp = e.importanceScore ?? 0;
     const needs = e.needsAction ?? false;
+    const keys = rankingSignalKeys(e);
+    if (keys.isLowSignalNotification && !needs && imp < allowLowSignalIfImportanceAtLeast) {
+      return false;
+    }
     if (
+      !keys.isProtected &&
       isLowSignalPriorityCategoryName(e.categoryName, opts.excludePriorityCategories) &&
       !needs &&
       imp < allowLowSignalIfImportanceAtLeast
@@ -245,7 +261,7 @@ export function selectTopPriorities(
     id: e.id,
     score: (() => {
       let s = computePriorityScore(e, opts);
-      // Lightweight learning: if you've marked a sender/domain as \"not important\",
+      // Lightweight in-list learning: if you've marked a sender/domain as not important,
       // de-prioritize similar items (while still allowing true action-needed items through).
       if (s > 0) {
         const needs = e.needsAction ?? false;

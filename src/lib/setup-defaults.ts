@@ -9,6 +9,7 @@ export const DEFAULT_CATEGORIES = [
   "Personal",
   "Newsletters",
   "Promotions",
+  "Notifications",
   "Low-priority",
   "Other",
 ];
