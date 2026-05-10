@@ -106,6 +106,13 @@ function providerName(): string {
   return process.env.EMAIL_PROVIDER ?? "console";
 }
 
+function providerConfigurationError(): string | null {
+  if (providerName() !== "resend") return null;
+  if (!process.env.RESEND_API_KEY) return "missing_RESEND_API_KEY";
+  if (!process.env.EMAIL_FROM && !process.env.AUTH_EMAIL_FROM) return "missing_EMAIL_FROM";
+  return null;
+}
+
 function duplicateError(error: unknown): boolean {
   return !!error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "P2002";
 }
@@ -160,6 +167,21 @@ export async function sendMorningBriefEmailForUserWithDeps(
   }
 
   try {
+    const configError = providerConfigurationError();
+    if (configError) {
+      await deps.updateLog(logId, {
+        status: "skipped",
+        error: configError,
+      });
+      logger.warn("morning_brief_email_provider_misconfigured", {
+        userId,
+        localBriefDay,
+        provider: providerName(),
+        error: configError,
+      });
+      return { status: "skipped", reason: configError };
+    }
+
     const payload = await deps.getBriefPayload(userId);
     const brief = buildMorningBriefEmail(payload, now);
     const staleSources = brief.dataFreshness.staleSources;

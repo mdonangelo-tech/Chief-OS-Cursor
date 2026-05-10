@@ -163,3 +163,36 @@ test("sendMorningBriefEmailForUserWithDeps skips when both sources are stale", a
   assert.equal(result.reason, "stale_sources");
   assert.equal(calls.sent.length, 0);
 });
+
+test("sendMorningBriefEmailForUserWithDeps skips when Resend is misconfigured", async () => {
+  const previousProvider = process.env.EMAIL_PROVIDER;
+  const previousKey = process.env.RESEND_API_KEY;
+  const previousFrom = process.env.EMAIL_FROM;
+  const previousAuthFrom = process.env.AUTH_EMAIL_FROM;
+  process.env.EMAIL_PROVIDER = "resend";
+  delete process.env.RESEND_API_KEY;
+  delete process.env.EMAIL_FROM;
+  delete process.env.AUTH_EMAIL_FROM;
+
+  try {
+    const { deps: fakeDeps, calls } = deps();
+    const result = await sendMorningBriefEmailForUserWithDeps(
+      "user-1",
+      new Date("2026-05-10T11:00:00.000Z"),
+      fakeDeps
+    );
+
+    assert.equal(result.status, "skipped");
+    assert.equal(result.reason, "missing_RESEND_API_KEY");
+    assert.equal(calls.sent.length, 0);
+  } finally {
+    if (previousProvider === undefined) delete process.env.EMAIL_PROVIDER;
+    else process.env.EMAIL_PROVIDER = previousProvider;
+    if (previousKey === undefined) delete process.env.RESEND_API_KEY;
+    else process.env.RESEND_API_KEY = previousKey;
+    if (previousFrom === undefined) delete process.env.EMAIL_FROM;
+    else process.env.EMAIL_FROM = previousFrom;
+    if (previousAuthFrom === undefined) delete process.env.AUTH_EMAIL_FROM;
+    else process.env.AUTH_EMAIL_FROM = previousAuthFrom;
+  }
+});

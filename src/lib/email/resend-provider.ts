@@ -2,11 +2,12 @@ import { Resend } from "resend";
 import type { EmailProvider, SendEmailInput, SendEmailResult } from "./types";
 
 function defaultFrom(): string {
-  return (
-    process.env.EMAIL_FROM ??
-    process.env.AUTH_EMAIL_FROM ??
-    "ChiefOS <onboarding@resend.dev>"
-  );
+  const from = process.env.EMAIL_FROM ?? process.env.AUTH_EMAIL_FROM;
+  if (from) return from;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("EMAIL_FROM or AUTH_EMAIL_FROM is required for production email sends");
+  }
+  return "ChiefOS <onboarding@resend.dev>";
 }
 
 function htmlEscape(value: string): string {
