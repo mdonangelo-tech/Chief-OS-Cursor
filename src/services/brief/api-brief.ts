@@ -54,6 +54,7 @@ function daysAgo(d: Date): number {
 }
 
 export interface BriefPayload {
+  assembledAt: string;
   summary: {
     prioritiesCount: number;
     openLoopsCount: number;
@@ -142,11 +143,15 @@ export interface BriefPayload {
       id: string;
       title: string | null;
       startAt: string;
+      endAt: string;
+      durationMinutes: number | null;
       accountType: "work" | "personal" | "unknown";
       accountLabel: string;
       flags: string[];
       insights?: {
         focusType?: string;
+        needsPrep?: boolean;
+        prepTimeMinutes?: number | null;
         reason?: string;
         watchouts?: string[];
         confidence?: number;
@@ -551,11 +556,15 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       id: string;
       title: string | null;
       startAt: string;
+      endAt: string;
+      durationMinutes: number | null;
       accountType: "work" | "personal" | "unknown";
       accountLabel: string;
       flags: string[];
       insights?: {
         focusType?: string;
+        needsPrep?: boolean;
+        prepTimeMinutes?: number | null;
         reason?: string;
         watchouts?: string[];
         confidence?: number;
@@ -582,6 +591,9 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       ex && ex.source === "llm"
         ? {
             focusType: typeof ex.focus_type === "string" ? ex.focus_type : undefined,
+            needsPrep: typeof ex.needs_prep === "boolean" ? ex.needs_prep : undefined,
+            prepTimeMinutes:
+              typeof ex.prep_time_minutes === "number" ? ex.prep_time_minutes : undefined,
             reason: typeof ex.reason === "string" ? ex.reason : undefined,
             watchouts: Array.isArray(ex.watchouts)
               ? (ex.watchouts.filter((w) => typeof w === "string") as string[])
@@ -594,6 +606,11 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
       id: e.id,
       title: e.title,
       startAt: e.startAt.toISOString(),
+      endAt: e.endAt.toISOString(),
+      durationMinutes:
+        typeof e.durationMinutes === "number" && Number.isFinite(e.durationMinutes)
+          ? e.durationMinutes
+          : Math.max(0, Math.round((e.endAt.getTime() - e.startAt.getTime()) / 60000)),
       accountType,
       accountLabel,
       flags,
@@ -659,6 +676,7 @@ export async function getBriefPayload(userId: string): Promise<BriefPayload> {
     .map((r) => r.value);
 
   return {
+    assembledAt: briefAssembledAt.toISOString(),
     summary: {
       prioritiesCount: priorities.length,
       openLoopsCount: openLoops.length,

@@ -7,15 +7,23 @@ export default async function WorkspaceSyncSettingsPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const prefs = await prisma.userCalendarPreferences.findUnique({
-    where: { userId: session.user.id },
-    select: {
-      timezone: true,
-      morningPrepLocalTime: true,
-      refreshMode: true,
-      periodicRefreshHours: true,
-    },
-  });
+  const [prefs, user] = await Promise.all([
+    prisma.userCalendarPreferences.findUnique({
+      where: { userId: session.user.id },
+      select: {
+        timezone: true,
+        morningPrepLocalTime: true,
+        refreshMode: true,
+        periodicRefreshHours: true,
+        morningBriefEmailEnabled: true,
+        morningBriefEmailRecipient: true,
+      },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { email: true },
+    }),
+  ]);
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -35,6 +43,9 @@ export default async function WorkspaceSyncSettingsPage() {
       <WorkspaceSyncClient
         initialTimezone={prefs?.timezone ?? null}
         initialMorningPrepLocalTime={prefs?.morningPrepLocalTime ?? null}
+        initialUserEmail={user?.email ?? null}
+        initialMorningBriefEmailEnabled={prefs?.morningBriefEmailEnabled ?? false}
+        initialMorningBriefEmailRecipient={prefs?.morningBriefEmailRecipient ?? null}
         initialRefreshMode={
           prefs?.refreshMode === "morning_prep" ||
           prefs?.refreshMode === "smart_periodic" ||

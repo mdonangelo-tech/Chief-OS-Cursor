@@ -1,8 +1,9 @@
-import type { EmailProvider } from "./types";
+import type { EmailProvider, SendEmailInput } from "./types";
 import { createConsoleEmailProvider } from "./console-provider";
+import { createResendEmailProvider } from "./resend-provider";
 
-export type { EmailProvider, SendMagicLinkResult } from "./types";
-export { createConsoleEmailProvider, getRecentMagicLinks } from "./console-provider";
+export type { EmailProvider, SendEmailInput, SendEmailResult, SendMagicLinkResult } from "./types";
+export { createConsoleEmailProvider, getRecentEmails, getRecentMagicLinks } from "./console-provider";
 
 /** Provider type from env. Default: console (dev). */
 export type EmailProviderType = "console" | "resend" | "sendgrid";
@@ -13,6 +14,7 @@ function getProvider(): EmailProvider {
     case "console":
       return createConsoleEmailProvider();
     case "resend":
+      return createResendEmailProvider();
     case "sendgrid":
       throw new Error(
         `Email provider "${type}" not yet implemented. Use EMAIL_PROVIDER=console for dev.`
@@ -43,4 +45,13 @@ export async function sendMagicLink(
 ): Promise<{ success: boolean; error?: string }> {
   const provider = getEmailProvider();
   return provider.sendMagicLink(email, url);
+}
+
+export async function sendEmail(input: SendEmailInput) {
+  const provider = getEmailProvider();
+  return provider.sendEmail(input);
+}
+
+export function resetEmailProviderForTests(): void {
+  cachedProvider = null;
 }

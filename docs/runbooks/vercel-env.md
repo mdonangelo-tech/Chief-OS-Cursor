@@ -38,6 +38,19 @@ Recommended defaults:
 ### Cron
 - `CRON_SECRET` (Bearer secret required by `/api/cron/sync-and-run`)
 
+### Morning Brief Email
+- `EMAIL_PROVIDER`
+  - Local/dev default: `console` logs email attempts and does not contact an external provider.
+  - Production recommended: `resend`.
+- `RESEND_API_KEY` when `EMAIL_PROVIDER=resend`.
+- `EMAIL_FROM`, for example `ChiefOS Brief <brief@updates.chief-os.ai>`.
+  - If omitted, the app falls back to `AUTH_EMAIL_FROM` for transactional mail.
+- Resend domain setup:
+  - Create and verify a sending domain or subdomain in Resend, preferably `updates.chief-os.ai`.
+  - Add the SPF and DKIM DNS records Resend provides.
+  - Add DMARC if the domain does not already have it.
+  - Do not use `onboarding@resend.dev` for production sends.
+
 ### Optional safety controls
 - `DOGFOOD_ALLOWED_EMAILS` (comma-separated allowlist)
 - `PRIVATE_MODE` (`true`/`false`)
@@ -63,6 +76,8 @@ Vercel Cron schedules in `vercel.json` are **UTC-based**. ChiefOS currently uses
 
 The cron is set to `0 11 * * *`, which runs at **7:00am America/New_York during daylight saving time**. This is the current early-product best fit for the founder's local morning.
 
+Morning Brief Email is sent from the same cron after Gmail sync, Calendar sync/enrichment, and auto-archive complete. The app uses the user's saved timezone to dedupe by local day, but the MVP does not run separate per-timezone cron schedules.
+
 ### DST limitation
 
 Because the schedule is global UTC, it cannot perfectly match local 7:00am across daylight saving changes or multiple user timezones without more scheduling infrastructure. In standard time, America/New_York 7:00am is `12:00 UTC`.
@@ -77,6 +92,8 @@ For **preview** and early production rollouts:
 - Keep any automated Gmail mutation behind an env flag.
 - Prefer “label/digest only” behavior until confidence is high.
 - Maintain a clear kill-switch (env var) you can flip without redeploying code.
+- Keep Morning Brief Email disabled in settings until the sending domain is verified.
+- To stop real emails quickly, set `EMAIL_PROVIDER=console` or remove `RESEND_API_KEY`.
 
 ## Secret rotation (quick runbook)
 When rotating secrets (Auth, OAuth, cron):

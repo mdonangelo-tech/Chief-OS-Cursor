@@ -86,11 +86,17 @@ function recommendCronSchedule(timeZone: string, localHHMM: string) {
 export function WorkspaceSyncClient({
   initialTimezone,
   initialMorningPrepLocalTime,
+  initialUserEmail,
+  initialMorningBriefEmailEnabled,
+  initialMorningBriefEmailRecipient,
   initialRefreshMode,
   initialPeriodicRefreshHours,
 }: {
   initialTimezone: string | null;
   initialMorningPrepLocalTime: string | null;
+  initialUserEmail: string | null;
+  initialMorningBriefEmailEnabled: boolean;
+  initialMorningBriefEmailRecipient: string | null;
   initialRefreshMode: RefreshMode | null;
   initialPeriodicRefreshHours: number | null;
 }) {
@@ -107,6 +113,12 @@ export function WorkspaceSyncClient({
   );
   const [morningTime, setMorningTime] = useState<string>(
     initialMorningPrepLocalTime ?? "07:00"
+  );
+  const [morningBriefEmailEnabled, setMorningBriefEmailEnabled] = useState(
+    initialMorningBriefEmailEnabled
+  );
+  const [morningBriefEmailRecipient, setMorningBriefEmailRecipient] = useState(
+    initialMorningBriefEmailRecipient ?? initialUserEmail ?? ""
   );
   const [mode, setMode] = useState<RefreshMode>(initialRefreshMode ?? "morning_prep");
   const [periodicHours, setPeriodicHours] = useState<number>(initialPeriodicRefreshHours ?? 3);
@@ -133,6 +145,8 @@ export function WorkspaceSyncClient({
           morningPrepLocalTime: morningTime.trim() || null,
           refreshMode: mode,
           periodicRefreshHours: mode === "smart_periodic" ? periodicHours : null,
+          morningBriefEmailEnabled,
+          morningBriefEmailRecipient: morningBriefEmailRecipient.trim() || initialUserEmail || null,
         }),
       });
       const dataUnknown = (await res.json().catch(() => ({}))) as unknown;
@@ -228,6 +242,38 @@ export function WorkspaceSyncClient({
         <div className="text-xs text-muted-foreground/70 mt-2">
           Daylight saving time can shift automated updates. Use this as a best-fit schedule check.
         </div>
+      </div>
+
+      <div className="rounded-xl border border-border/10 bg-background/60 px-4 py-3 space-y-3">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={morningBriefEmailEnabled}
+            onChange={(e) => setMorningBriefEmailEnabled(e.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            <span className="block text-sm font-medium text-foreground">Email my Morning Brief</span>
+            <span className="block text-xs text-muted-foreground/80 mt-0.5">
+              Send one concise strategic summary after the morning refresh completes.
+            </span>
+          </span>
+        </label>
+
+        <label className="block space-y-1">
+          <div className="text-xs text-muted-foreground">Recipient</div>
+          <input
+            type="email"
+            value={morningBriefEmailRecipient}
+            onChange={(e) => setMorningBriefEmailRecipient(e.target.value)}
+            placeholder={initialUserEmail ?? "you@example.com"}
+            className="w-full rounded-xl border border-border/10 bg-background px-3 py-2 text-sm text-foreground"
+          />
+          <div className="text-xs text-muted-foreground/70">
+            For the MVP, ChiefOS only sends to your signed-in account email
+            {initialUserEmail ? ` (${initialUserEmail})` : ""}.
+          </div>
+        </label>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">

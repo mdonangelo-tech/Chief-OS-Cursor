@@ -6,6 +6,7 @@ import { syncGmailForUser } from "@/services/gmail/sync";
 import { syncCalendarForUser } from "@/services/calendar/sync";
 import { enrichUpcomingCalendarEvents } from "@/services/classification/calendar";
 import { runAutoArchiveBatch } from "@/services/declutter/run-auto-archive-batch";
+import { sendMorningBriefEmailForUser } from "@/services/morning-brief-email/send";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,7 @@ export const GET = withApiGuard(async (req: NextRequest) => {
     gmail?: { accounts: number; errors: string[] };
     calendar?: { accounts: number; errors: string[] };
     autoArchive?: { processed: number; remainingEligible: number };
+    morningBriefEmail?: { status: string; reason?: string; messageId?: string };
     errors: string[];
   }> = [];
 
@@ -88,6 +90,14 @@ export const GET = withApiGuard(async (req: NextRequest) => {
         processed: autoArchive.processed,
         remainingEligible: autoArchive.remainingEligible,
       };
+    } catch (e) {
+      const db = asDbErrorInfo(e);
+      row.errors.push(db?.message ?? (e as Error).message);
+    }
+
+    try {
+      const morningBriefEmail = await sendMorningBriefEmailForUser(userId);
+      row.morningBriefEmail = morningBriefEmail;
     } catch (e) {
       const db = asDbErrorInfo(e);
       row.errors.push(db?.message ?? (e as Error).message);
