@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+---
+# ChiefOS Project Rules
+
+ChiefOS is a personal operating system for managing email, calendar, tasks, declutter, planning, prioritization, and intentional workflows. The founder is validating the product personally before possibly evolving it into a freemium SaaS platform.
+
+## Product Guardrails
+
+- Prioritize calm, clear, trustworthy workflows.
+- Reduce cognitive load and avoid overwhelming the user.
+- Prefer usefulness over feature complexity.
+- Keep CTAs visually obvious and aligned with the user's next best action.
+- Treat empty states, loading states, previews, and rollback paths as part of the product experience.
+
+## Engineering Guardrails
+
+- Favor simple, production-safe changes.
+- Keep changes small and reviewable.
+- Avoid unnecessary rewrites, broad refactors, and duplicated systems.
+- Preserve existing Gmail and calendar integrations unless explicitly changing them.
+- Do not introduce paid infrastructure, especially paid Vercel features, unless explicitly approved.
+- Prefer user-local-time scheduling when possible.
+
+## AI Workflow Guardrails
+
+- Identify likely files before editing.
+- Create concise plans for multi-file, risky, ambiguous, or user-facing behavior changes.
+- Route high-risk work through the relevant specialist review instead of relying on a single implementation pass.
+- Include confidence, assumptions, risks, unresolved questions, and untested areas in non-trivial handoffs.
+- Use handoffs when context gets long, ownership changes, or a fresh conversation would be clearer.
+- Preserve architectural clarity and avoid AI-generated spaghetti code.
+- Keep durable workflow instructions in `.cursor/`; keep transient task details in plans or handoffs.
