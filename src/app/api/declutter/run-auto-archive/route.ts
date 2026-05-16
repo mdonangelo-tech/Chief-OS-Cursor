@@ -26,6 +26,10 @@ async function postImpl(_req: NextRequest) {
     ok: true,
     processed: result.processed,
     remainingEligible: result.remainingEligible,
+    status: result.status,
+    scanned: result.scanned,
+    skipReasons: result.skipReasons,
+    perAccount: result.perAccount,
   };
   return NextResponse.json(res);
 }
