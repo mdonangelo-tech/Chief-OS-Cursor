@@ -49,6 +49,8 @@ export type RunAutoArchiveBatchResult = {
   scanned: number;
   skipReasons: AutoArchiveBatchSkipReasons;
   perAccount: AutoArchiveBatchPerAccount[];
+  hasErrors: boolean;
+  errorCount: number;
 };
 
 export async function updateDbLabelsAfterBatch(
@@ -97,6 +99,8 @@ export async function runAutoArchiveBatch(
       scanned: 0,
       skipReasons: { notYetDue: 0, decisionNone: 0 },
       perAccount: [],
+      hasErrors: false,
+      errorCount: 0,
     };
   }
 
@@ -116,6 +120,8 @@ export async function runAutoArchiveBatch(
       scanned: 0,
       skipReasons: { notYetDue: 0, decisionNone: 0 },
       perAccount: [],
+      hasErrors: false,
+      errorCount: 0,
     };
   }
 
@@ -176,6 +182,8 @@ export async function runAutoArchiveBatch(
       scanned: 0,
       skipReasons: { notYetDue: 0, decisionNone: 0 },
       perAccount: [],
+      hasErrors: false,
+      errorCount: 0,
     };
   }
 
@@ -333,37 +341,65 @@ export async function runAutoArchiveBatch(
     const acct = ensureAccount(googleAccountId);
     for (let i = 0; i < ids.length; i += 1000) {
       const chunk = ids.slice(i, i + 1000);
-      const r = await batchArchiveMessages(userId, googleAccountId, chunk, reason, runId);
-      processed += r.archived;
-      acct.archived += r.archived;
-      acct.errors += r.errors.length;
-      if (r.errors.length > 0) {
-        log("archive_errors", { userId, runId, googleAccountId, errors: r.errors });
+      try {
+        const r = await batchArchiveMessages(userId, googleAccountId, chunk, reason, runId);
+        processed += r.archived;
+        acct.archived += r.archived;
+        acct.errors += r.errors.length;
+        if (r.errors.length > 0) {
+          log("archive_errors", { userId, runId, googleAccountId, errors: r.errors });
+        }
+        await updateDbLabelsAfterBatch(chunk, CHIEFOS_ARCHIVED_LABEL);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        acct.errors += chunk.length;
+        log("archive_batch_error", {
+          userId,
+          runId,
+          googleAccountId,
+          actionType: "archive",
+          batchSize: chunk.length,
+          error: msg.slice(0, 300),
+        });
       }
-      await updateDbLabelsAfterBatch(chunk, CHIEFOS_ARCHIVED_LABEL);
     }
   }
   for (const [googleAccountId, ids] of byAccountSpam.entries()) {
     const acct = ensureAccount(googleAccountId);
     for (let i = 0; i < ids.length; i += 1000) {
       const chunk = ids.slice(i, i + 1000);
-      const r = await batchSpamMessages(userId, googleAccountId, chunk, reason, runId);
-      processed += r.spammed;
-      acct.spammed += r.spammed;
-      acct.errors += r.errors.length;
-      if (r.errors.length > 0) {
-        log("spam_errors", { userId, runId, googleAccountId, errors: r.errors });
+      try {
+        const r = await batchSpamMessages(userId, googleAccountId, chunk, reason, runId);
+        processed += r.spammed;
+        acct.spammed += r.spammed;
+        acct.errors += r.errors.length;
+        if (r.errors.length > 0) {
+          log("spam_errors", { userId, runId, googleAccountId, errors: r.errors });
+        }
+        await updateDbLabelsAfterBatch(chunk, "SPAM");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        acct.errors += chunk.length;
+        log("spam_batch_error", {
+          userId,
+          runId,
+          googleAccountId,
+          actionType: "spam",
+          batchSize: chunk.length,
+          error: msg.slice(0, 300),
+        });
       }
-      await updateDbLabelsAfterBatch(chunk, "SPAM");
     }
   }
 
   const perAccount = Array.from(perAccountMap.values());
+  const errorCount = perAccount.reduce((sum, a) => sum + a.errors, 0);
 
   log("archive_complete", {
     userId,
     runId,
     processed,
+    errorCount,
     perAccount,
   });
 
@@ -450,6 +486,8 @@ export async function runAutoArchiveBatch(
     processed,
     remainingEligible,
     scanned,
+    errorCount,
+    hasErrors: errorCount > 0,
   });
 
   return {
@@ -461,5 +499,7 @@ export async function runAutoArchiveBatch(
     scanned,
     skipReasons,
     perAccount,
+    hasErrors: errorCount > 0,
+    errorCount,
   };
 }

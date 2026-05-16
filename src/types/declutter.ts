@@ -69,6 +69,8 @@ export type RunAutoArchiveResponse = {
   scanned?: number;
   skipReasons?: AutoArchiveBatchSkipReasons;
   perAccount?: AutoArchiveBatchPerAccount[];
+  hasErrors?: boolean;
+  errorCount?: number;
 };
 
 export type RunAgeArchiveResponse = {

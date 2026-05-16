@@ -30,6 +30,8 @@ async function postImpl(_req: NextRequest) {
     scanned: result.scanned,
     skipReasons: result.skipReasons,
     perAccount: result.perAccount,
+    hasErrors: result.hasErrors,
+    errorCount: result.errorCount,
   };
   return NextResponse.json(res);
 }
