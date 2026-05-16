@@ -46,7 +46,14 @@ export const GET = withApiGuard(async (req: NextRequest) => {
     userId: string;
     gmail?: { accounts: number; errors: string[] };
     calendar?: { accounts: number; errors: string[] };
-    autoArchive?: { processed: number; remainingEligible: number };
+    autoArchive?: {
+      status: string;
+      processed: number;
+      remainingEligible: number;
+      scanned: number;
+      skipReasons?: { notYetDue: number; decisionNone: number };
+      perAccount?: Array<{ googleAccountId: string; archived: number; spammed: number; errors: number }>;
+    };
     morningBriefEmail?: { status: string; reason?: string; messageId?: string };
     errors: string[];
   }> = [];
@@ -87,8 +94,12 @@ export const GET = withApiGuard(async (req: NextRequest) => {
       const autoArchive = await runAutoArchiveBatch(userId, { maxPerCall: 100 });
       totalAutoArchived += autoArchive.processed;
       row.autoArchive = {
+        status: autoArchive.status,
         processed: autoArchive.processed,
         remainingEligible: autoArchive.remainingEligible,
+        scanned: autoArchive.scanned,
+        skipReasons: autoArchive.skipReasons,
+        perAccount: autoArchive.perAccount,
       };
     } catch (e) {
       const db = asDbErrorInfo(e);

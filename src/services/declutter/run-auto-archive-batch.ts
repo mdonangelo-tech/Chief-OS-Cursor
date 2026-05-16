@@ -5,10 +5,19 @@ import { buildDeclutterDecisionCtx } from "@/lib/declutter-decision-ctx";
 import { batchArchiveMessages, batchSpamMessages } from "@/services/gmail/actions";
 import { CHIEFOS_ARCHIVED_LABEL } from "@/services/gmail/labels";
 import { Prisma } from "@prisma/client";
+import type {
+  AutoArchiveBatchStatus,
+  AutoArchiveBatchSkipReasons,
+  AutoArchiveBatchPerAccount,
+} from "@/types/declutter";
 
 const DEFAULT_MAX_PER_CALL = 1000;
 const PAGE_SIZE = 2000;
 const MAX_SCAN = 50_000;
+// Only look back this far when deduplicating against the audit log.
+// Messages already archived also carry CHIEFOS_ARCHIVED_LABEL, so the
+// label filter is the primary guard; the audit log check is secondary.
+const AUDIT_LOG_LOOKBACK_DAYS = 90;
 
 type ScanRow = {
   id: string;
@@ -27,11 +36,21 @@ function normalizePolicyAction(action: string): string {
   return (action ?? "").toLowerCase().trim();
 }
 
+function log(event: string, fields: Record<string, unknown>): void {
+  console.info(JSON.stringify({ service: "auto-archive-batch", event, ...fields }));
+}
+
 export type RunAutoArchiveBatchResult = {
   ok: true;
   runId: string;
+  status: AutoArchiveBatchStatus;
   processed: number;
   remainingEligible: number;
+  scanned: number;
+  skipReasons: AutoArchiveBatchSkipReasons;
+  perAccount: AutoArchiveBatchPerAccount[];
+  hasErrors: boolean;
+  errorCount: number;
 };
 
 export async function updateDbLabelsAfterBatch(
@@ -63,12 +82,26 @@ export async function runAutoArchiveBatch(
   const maxPerCall = opts?.maxPerCall ?? DEFAULT_MAX_PER_CALL;
   const runId = randomUUID();
 
+  log("start", { userId, runId, maxPerCall });
+
   const pref = await prisma.userDeclutterPref.findUnique({
     where: { userId },
     select: { autoArchiveEnabled: true },
   });
   if (!pref?.autoArchiveEnabled) {
-    return { ok: true, runId, processed: 0, remainingEligible: 0 };
+    log("disabled", { userId, runId, prefExists: pref != null });
+    return {
+      ok: true,
+      runId,
+      status: "disabled",
+      processed: 0,
+      remainingEligible: 0,
+      scanned: 0,
+      skipReasons: { notYetDue: 0, decisionNone: 0 },
+      perAccount: [],
+      hasErrors: false,
+      errorCount: 0,
+    };
   }
 
   const accounts = await prisma.googleAccount.findMany({
@@ -77,31 +110,46 @@ export async function runAutoArchiveBatch(
   });
   const accountIds = accounts.map((a) => a.id);
   if (accountIds.length === 0) {
-    return { ok: true, runId, processed: 0, remainingEligible: 0 };
+    log("no_accounts", { userId, runId });
+    return {
+      ok: true,
+      runId,
+      status: "no_accounts",
+      processed: 0,
+      remainingEligible: 0,
+      scanned: 0,
+      skipReasons: { notYetDue: 0, decisionNone: 0 },
+      perAccount: [],
+      hasErrors: false,
+      errorCount: 0,
+    };
   }
 
   const ctx = await buildDeclutterDecisionCtx(userId, now);
 
-  // Avoid re-archiving messages this tool already archived.
-  const alreadyArchived = new Set(
-    (
-      await prisma.auditLog.findMany({
-        where: {
-          userId,
-          actionType: { in: ["ARCHIVE", "SPAM"] },
-          messageId: { not: null },
-        },
-        select: { messageId: true },
-      })
-    )
-      .map((a) => a.messageId)
-      .filter(Boolean) as string[]
+  // Summarize which categories have archive policies for the log.
+  const policyEntries = Object.entries(ctx.categoryPoliciesById)
+    .filter(([, p]) => p != null)
+    .map(([catId, p]) => ({ catId, action: p!.action, archiveAfterDays: p!.archiveAfterDays }));
+  const archivePolicies = policyEntries.filter((e) => {
+    const a = normalizePolicyAction(e.action);
+    return a === "archive_after_48h" || a === "archive_after_days" || a === "archive_after_n_days";
+  });
+  const spamPolicies = policyEntries.filter(
+    (e) => normalizePolicyAction(e.action) === "move_to_spam"
   );
 
-  const eligible: Array<{
-    e: ScanRow;
-    decision: ReturnType<typeof decideEmail>;
-  }> = [];
+  log("policies", {
+    userId,
+    runId,
+    totalPolicies: policyEntries.length,
+    archivePolicies: archivePolicies.length,
+    spamPolicies: spamPolicies.length,
+    archivePolicyDetails: archivePolicies,
+  });
+
+  // Compute the minimum eligible age across all archive policies.
+  // Used as a DB-level pre-filter so we don't scan emails that can't possibly be eligible.
   let minEligibleDays: number | null = null;
   for (const p of Object.values(ctx.categoryPoliciesById)) {
     if (!p) continue;
@@ -115,13 +163,70 @@ export async function runAutoArchiveBatch(
       }
     }
   }
-  const cutoff =
-    minEligibleDays != null
-      ? new Date(now.getTime() - minEligibleDays * 24 * 60 * 60 * 1000)
-      : null;
 
+  // No archive policies → nothing to do. Note: move_to_spam is tracked above but
+  // is currently not processed by this batch (archiveAt is null for spam decisions).
+  // That is documented as a known gap in the handoff.
+  if (minEligibleDays === null) {
+    log("no_archive_policies", {
+      userId,
+      runId,
+      spamPoliciesExist: spamPolicies.length > 0,
+    });
+    return {
+      ok: true,
+      runId,
+      status: "no_archive_policies",
+      processed: 0,
+      remainingEligible: 0,
+      scanned: 0,
+      skipReasons: { notYetDue: 0, decisionNone: 0 },
+      perAccount: [],
+      hasErrors: false,
+      errorCount: 0,
+    };
+  }
+
+  const cutoff = new Date(now.getTime() - minEligibleDays * 24 * 60 * 60 * 1000);
+  log("scan_start", {
+    userId,
+    runId,
+    minEligibleDays,
+    cutoff: cutoff.toISOString(),
+    accountCount: accountIds.length,
+    maxPerCall,
+  });
+
+  // Cap the AuditLog dedup lookup to recent history. Messages already archived
+  // also carry CHIEFOS_ARCHIVED_LABEL which is the primary dedup filter; this
+  // is a secondary guard for cases where the label update lagged.
+  const auditLookbackFrom = new Date(now.getTime() - AUDIT_LOG_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+  const alreadyArchived = new Set(
+    (
+      await prisma.auditLog.findMany({
+        where: {
+          userId,
+          actionType: { in: ["ARCHIVE", "SPAM"] },
+          messageId: { not: null },
+          timestamp: { gte: auditLookbackFrom },
+        },
+        select: { messageId: true },
+      })
+    )
+      .map((a) => a.messageId)
+      .filter(Boolean) as string[]
+  );
+
+  log("audit_dedup", { userId, runId, alreadyArchivedCount: alreadyArchived.size });
+
+  const eligible: Array<{
+    e: ScanRow;
+    decision: ReturnType<typeof decideEmail>;
+  }> = [];
+  const skipReasons: AutoArchiveBatchSkipReasons = { notYetDue: 0, decisionNone: 0 };
   let scanned = 0;
   let cursorId: string | null = null;
+
   while (scanned < MAX_SCAN && eligible.length < maxPerCall) {
     const page: ScanRow[] = await prisma.emailEvent.findMany({
       where: {
@@ -129,7 +234,7 @@ export async function runAutoArchiveBatch(
         labels: { has: "INBOX" },
         NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
         messageId: { notIn: Array.from(alreadyArchived) },
-        ...(cutoff ? { date: { lte: cutoff } } : {}),
+        date: { lte: cutoff },
       },
       select: {
         id: true,
@@ -183,13 +288,32 @@ export async function runAutoArchiveBatch(
         },
         ctx
       );
-      if (decision.action !== "ARCHIVE_AT" && decision.action !== "SPAM") continue;
-      if (!decision.archiveAt) continue;
-      if (new Date(decision.archiveAt).getTime() > now.getTime()) continue;
+      if (decision.action !== "ARCHIVE_AT" && decision.action !== "SPAM") {
+        skipReasons.decisionNone++;
+        continue;
+      }
+      if (!decision.archiveAt) {
+        // move_to_spam has no archiveAt; treated as not-yet-actionable by this batch.
+        skipReasons.decisionNone++;
+        continue;
+      }
+      if (new Date(decision.archiveAt).getTime() > now.getTime()) {
+        skipReasons.notYetDue++;
+        continue;
+      }
       eligible.push({ e, decision });
       if (eligible.length >= maxPerCall || scanned >= MAX_SCAN) break;
     }
   }
+
+  log("scan_complete", {
+    userId,
+    runId,
+    scanned,
+    eligible: eligible.length,
+    skipNotYetDue: skipReasons.notYetDue,
+    skipDecisionNone: skipReasons.decisionNone,
+  });
 
   let processed = 0;
   const byAccountArchive = new Map<string, string[]>();
@@ -204,42 +328,96 @@ export async function runAutoArchiveBatch(
     }
   }
 
+  const perAccountMap = new Map<string, AutoArchiveBatchPerAccount>();
+  const ensureAccount = (id: string) => {
+    if (!perAccountMap.has(id)) {
+      perAccountMap.set(id, { googleAccountId: id, archived: 0, spammed: 0, errors: 0 });
+    }
+    return perAccountMap.get(id)!;
+  };
+
   const reason = "auto-archive-batch";
   for (const [googleAccountId, ids] of byAccountArchive.entries()) {
+    const acct = ensureAccount(googleAccountId);
     for (let i = 0; i < ids.length; i += 1000) {
       const chunk = ids.slice(i, i + 1000);
-      const r = await batchArchiveMessages(userId, googleAccountId, chunk, reason, runId);
-      processed += r.archived;
-      await updateDbLabelsAfterBatch(chunk, CHIEFOS_ARCHIVED_LABEL);
+      try {
+        const r = await batchArchiveMessages(userId, googleAccountId, chunk, reason, runId);
+        processed += r.archived;
+        acct.archived += r.archived;
+        acct.errors += r.errors.length;
+        if (r.errors.length > 0) {
+          log("archive_errors", { userId, runId, googleAccountId, errors: r.errors });
+        }
+        await updateDbLabelsAfterBatch(chunk, CHIEFOS_ARCHIVED_LABEL);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        acct.errors += chunk.length;
+        log("archive_batch_error", {
+          userId,
+          runId,
+          googleAccountId,
+          actionType: "archive",
+          batchSize: chunk.length,
+          error: msg.slice(0, 300),
+        });
+      }
     }
   }
   for (const [googleAccountId, ids] of byAccountSpam.entries()) {
+    const acct = ensureAccount(googleAccountId);
     for (let i = 0; i < ids.length; i += 1000) {
       const chunk = ids.slice(i, i + 1000);
-      const r = await batchSpamMessages(userId, googleAccountId, chunk, reason, runId);
-      processed += r.spammed;
-      await updateDbLabelsAfterBatch(chunk, "SPAM");
+      try {
+        const r = await batchSpamMessages(userId, googleAccountId, chunk, reason, runId);
+        processed += r.spammed;
+        acct.spammed += r.spammed;
+        acct.errors += r.errors.length;
+        if (r.errors.length > 0) {
+          log("spam_errors", { userId, runId, googleAccountId, errors: r.errors });
+        }
+        await updateDbLabelsAfterBatch(chunk, "SPAM");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        acct.errors += chunk.length;
+        log("spam_batch_error", {
+          userId,
+          runId,
+          googleAccountId,
+          actionType: "spam",
+          batchSize: chunk.length,
+          error: msg.slice(0, 300),
+        });
+      }
     }
   }
 
-  // Re-count eligible after this batch so the UI (and cron) can say what's left.
+  const perAccount = Array.from(perAccountMap.values());
+  const errorCount = perAccount.reduce((sum, a) => sum + a.errors, 0);
+
+  log("archive_complete", {
+    userId,
+    runId,
+    processed,
+    errorCount,
+    perAccount,
+  });
+
+  // Re-count eligible after this batch so the UI (and cron) can report what's left.
   const recountNow = new Date();
-  const recountCutoff =
-    minEligibleDays != null
-      ? new Date(recountNow.getTime() - minEligibleDays * 24 * 60 * 60 * 1000)
-      : null;
+  const recountCutoff = new Date(recountNow.getTime() - minEligibleDays * 24 * 60 * 60 * 1000);
 
   let remainingEligible = 0;
-  scanned = 0;
-  cursorId = null;
-  while (scanned < MAX_SCAN) {
+  let recountScanned = 0;
+  let recountCursorId: string | null = null;
+  while (recountScanned < MAX_SCAN) {
     const page: ScanRow[] = await prisma.emailEvent.findMany({
       where: {
         googleAccountId: { in: accountIds },
         labels: { has: "INBOX" },
         NOT: { labels: { has: CHIEFOS_ARCHIVED_LABEL } },
         messageId: { notIn: Array.from(alreadyArchived) },
-        ...(recountCutoff ? { date: { lte: recountCutoff } } : {}),
+        date: { lte: recountCutoff },
       },
       select: {
         id: true,
@@ -255,10 +433,10 @@ export async function runAutoArchiveBatch(
       },
       orderBy: { id: "asc" },
       take: PAGE_SIZE,
-      ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+      ...(recountCursorId ? { cursor: { id: recountCursorId }, skip: 1 } : {}),
     });
     if (page.length === 0) break;
-    cursorId = page[page.length - 1].id;
+    recountCursorId = page[page.length - 1].id;
 
     const pageThreadIds = Array.from(new Set(page.map((p) => p.threadId)));
     const pageThreadMaxRows = await prisma.emailEvent.groupBy({
@@ -277,7 +455,7 @@ export async function runAutoArchiveBatch(
     }
 
     for (const e of page) {
-      scanned++;
+      recountScanned++;
       const effectiveDate =
         pageThreadMaxByKey.get(`${e.googleAccountId}:${e.threadId}`) ?? e.date;
       const decision = decideEmail(
@@ -297,10 +475,31 @@ export async function runAutoArchiveBatch(
       if (!decision.archiveAt) continue;
       if (new Date(decision.archiveAt).getTime() > recountNow.getTime()) continue;
       remainingEligible++;
-      if (scanned >= MAX_SCAN) break;
+      if (recountScanned >= MAX_SCAN) break;
     }
   }
 
-  return { ok: true, runId, processed, remainingEligible };
-}
+  log("result", {
+    userId,
+    runId,
+    status: "ran",
+    processed,
+    remainingEligible,
+    scanned,
+    errorCount,
+    hasErrors: errorCount > 0,
+  });
 
+  return {
+    ok: true,
+    runId,
+    status: "ran",
+    processed,
+    remainingEligible,
+    scanned,
+    skipReasons,
+    perAccount,
+    hasErrors: errorCount > 0,
+    errorCount,
+  };
+}

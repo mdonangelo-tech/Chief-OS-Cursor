@@ -43,10 +43,34 @@ export type PreviewAutoArchiveResponse = {
   debug?: DeclutterPreviewDebug;
 };
 
+export type AutoArchiveBatchStatus =
+  | "disabled"
+  | "no_accounts"
+  | "no_archive_policies"
+  | "ran";
+
+export type AutoArchiveBatchSkipReasons = {
+  notYetDue: number;
+  decisionNone: number;
+};
+
+export type AutoArchiveBatchPerAccount = {
+  googleAccountId: string;
+  archived: number;
+  spammed: number;
+  errors: number;
+};
+
 export type RunAutoArchiveResponse = {
   ok: true;
   processed: number;
   remainingEligible: number;
+  status?: AutoArchiveBatchStatus;
+  scanned?: number;
+  skipReasons?: AutoArchiveBatchSkipReasons;
+  perAccount?: AutoArchiveBatchPerAccount[];
+  hasErrors?: boolean;
+  errorCount?: number;
 };
 
 export type RunAgeArchiveResponse = {
