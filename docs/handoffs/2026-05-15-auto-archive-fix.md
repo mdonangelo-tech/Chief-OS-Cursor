@@ -19,6 +19,15 @@ A secondary risk: the audit log dedup query fetched ALL historical ARCHIVE/SPAM 
 
 ---
 
+## Commits
+
+| Hash | Summary |
+|------|---------|
+| `8b49693` | Improve auto-archive batch observability |
+| `82bc9f9` | Improve auto-archive error handling |
+
+---
+
 ## What Changed
 
 ### `src/types/declutter.ts`
@@ -39,6 +48,29 @@ A secondary risk: the audit log dedup query fetched ALL historical ARCHIVE/SPAM 
 
 ### `src/app/api/declutter/run-auto-archive/route.ts`
 - Passes richer fields through to the API response
+- Passes `hasErrors` and `errorCount` through to the API response (commit `82bc9f9`)
+
+---
+
+### Commit `82bc9f9` — Error handling for batch archive/spam calls
+
+**Problem:** `batchArchiveMessages` and `batchSpamMessages` throw on any Gmail API error (expired token, non-200, account not found). `runAutoArchiveBatch` had no try/catch around these calls, so a single bad account caused the entire batch to throw — resulting in a 500 from the manual "Archive all eligible" UI route.
+
+**Fix (`src/services/declutter/run-auto-archive-batch.ts`):**
+- Wrapped each `batchArchiveMessages` call in try/catch. On catch: log `archive_batch_error` with `{ googleAccountId, actionType: "archive", batchSize, error: msg.slice(0, 300) }`, increment `acct.errors += chunk.length`, do not rethrow.
+- Same pattern for `batchSpamMessages` (logs `spam_batch_error`).
+- `errorCount` computed as `perAccount.reduce((sum, a) => sum + a.errors, 0)` after both loops.
+- Added `hasErrors: boolean` and `errorCount: number` to `RunAutoArchiveBatchResult`.
+- Early-return paths (`disabled`, `no_accounts`, `no_archive_policies`) return `hasErrors: false, errorCount: 0`.
+- `log("archive_complete")` and `log("result")` now include `errorCount` and `hasErrors`.
+
+**Fix (`src/types/declutter.ts`):**
+- Added optional `hasErrors?: boolean` and `errorCount?: number` to `RunAutoArchiveResponse` (backward-compatible).
+
+**Fix (`src/app/api/declutter/run-auto-archive/route.ts`):**
+- Passes `hasErrors` and `errorCount` through to the JSON response.
+
+**Result:** A Gmail token expiry or API failure for one account now logs a structured error and continues. The UI receives a 200 with `hasErrors: true` and `errorCount: N` instead of a 500.
 
 ---
 
@@ -50,12 +82,21 @@ A secondary risk: the audit log dedup query fetched ALL historical ARCHIVE/SPAM 
 - `src/app/api/declutter/run-auto-archive/route.ts`
 - `docs/handoffs/2026-05-15-auto-archive-fix.md` (this file)
 
+Commit `82bc9f9` additionally touched:
+
+- `src/types/declutter.ts` (added `hasErrors?`, `errorCount?` to `RunAutoArchiveResponse`)
+- `src/services/declutter/run-auto-archive-batch.ts` (try/catch, new fields)
+- `src/app/api/declutter/run-auto-archive/route.ts` (pass-through of new fields)
+
 ---
 
 ## Checks Run
 
+Both commits verified:
+
 - `npx tsc --noEmit` — clean
-- `npm run lint` — no errors (existing warnings unchanged)
+- `npm run lint` — warnings only, all pre-existing (none in touched files)
+- `npm run build` — exit 0, clean
 - `npm test` — 47/47 pass
 
 ---
